@@ -1,7 +1,5 @@
-extern crate patricia_tree;
 extern crate strsim;
 
-// use patricia_tree::PatriciaMap;
 use std::cmp;
 use std::cmp::Ordering;
 use std::collections::HashMap;

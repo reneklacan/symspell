@@ -5,4 +5,3 @@ authors = ["Rene Klacan <rene.klacan@gmail.com>"]
 
 [dependencies]
 strsim = "^0.7"
-patricia_tree = "*"
