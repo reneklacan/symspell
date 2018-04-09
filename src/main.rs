@@ -20,7 +20,13 @@ fn main() {
         1, // count threshold
     );
     // symspell.load_dictionary("corpus.txt", 0, 1);
-    symspell.load_dictionary("prim-7.0-public-vyv-word-frequency.txt", 0, 1);
+    symspell.load_dictionary(
+        "prim-7.0-public-vyv-word-frequency.txt",
+        0,
+        1,
+        "\t",
+        500_000,
+    );
 
     let result = symspell.lookup("situaciu", Verbosity::All, 2);
     println!("{:?}", result);
@@ -133,8 +139,8 @@ impl SymSpell {
             prefix_length: prefix_length,
             count_threshold: count_threshold,
             max_length: 0,
-            deletes: HashMap::new(),
-            words: HashMap::new(),
+            deletes: HashMap::with_capacity(500_000),
+            words: HashMap::with_capacity(500_000),
             distance_algorithm: DistanceAlgorithm::Damerau,
         }
     }
@@ -403,7 +409,14 @@ impl SymSpell {
         true
     }
 
-    pub fn load_dictionary(&mut self, corpus: &str, term_index: i64, count_index: i64) -> bool {
+    pub fn load_dictionary(
+        &mut self,
+        corpus: &str,
+        term_index: i64,
+        count_index: i64,
+        separator: &str,
+        max_records_count: usize,
+    ) -> bool {
         if !Path::new(corpus).exists() {
             return false;
         }
@@ -412,11 +425,15 @@ impl SymSpell {
         let sr = BufReader::new(file);
 
         for (i, line) in sr.lines().enumerate() {
+            if i == max_records_count {
+                break;
+            }
+
             if i % 10_000 == 0 {
                 println!("progress: {}", i);
             }
             let line_str = line.unwrap();
-            let line_parts: Vec<&str> = line_str.split("\t").collect();
+            let line_parts: Vec<&str> = line_str.split(separator).collect();
 
             if line_parts.len() >= 2 {
                 let key = line_parts[term_index as usize];
@@ -425,6 +442,9 @@ impl SymSpell {
                 self.create_dictionary_entry(key, count);
             }
         }
+
+        println!("deletes.len(): {}", self.deletes.len());
+        println!("words.len(): {}", self.words.len());
 
         true
     }
@@ -459,11 +479,13 @@ impl SymSpell {
     fn edits_prefix(&self, key: &str) -> HashSet<String> {
         let mut hash_set = HashSet::new();
 
-        if key.chars().count() as i64 <= self.max_dictionary_edit_distance {
+        let key_chars_count = key.chars().count() as i64;
+
+        if key_chars_count <= self.max_dictionary_edit_distance {
             hash_set.insert("".to_string());
         }
 
-        if key.chars().count() as i64 > self.prefix_length {
+        if key_chars_count > self.prefix_length {
             hash_set.insert(key.chars().take(self.prefix_length as usize).collect());
         } else {
             hash_set.insert(key.to_string());
