@@ -13,15 +13,15 @@ where
 
     if elapsed_ms < 1000.0 {
         println!(
-            "{} took {}ms",
+            "{} took {} ms",
             name,
             elapsed_ms
         );
     } else {
         println!(
-            "{} took {}s",
+            "{} took {} s",
             name,
-            elapsed_ms / 1000.0
+            elapsed_ms as u64 as f64 / 1000.0
         );
     }
 }
