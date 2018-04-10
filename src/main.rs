@@ -161,6 +161,7 @@ pub trait StringStrategy {
     fn remove(&self, s: &str, index: usize) -> String;
     fn slice(&self, s: &str, start: usize, end: usize) -> String;
     fn suffix(&self, s: &str, start: usize) -> String;
+    fn at(&self, s: &str, i: isize) -> Option<char>;
 }
 
 pub struct AsciiStringStrategy {}
@@ -190,6 +191,14 @@ impl StringStrategy for AsciiStringStrategy {
 
     fn suffix(&self, s: &str, start: usize) -> String {
         self.slice(s, start, s.len())
+    }
+
+    fn at(&self, s: &str, i: isize) -> Option<char> {
+        if i < 0 || i >= s.len() as isize {
+            return None;
+        }
+
+        Some(s.as_bytes()[i as usize] as char)
     }
 }
 
@@ -222,6 +231,14 @@ impl StringStrategy for UnicodeiStringStrategy {
 
     fn suffix(&self, s: &str, start: usize) -> String {
         s.chars().skip(start).collect::<String>()
+    }
+
+    fn at(&self, s: &str, i: isize) -> Option<char> {
+        if i < 0 || i >= s.len() as isize {
+            return None;
+        }
+
+        s.chars().skip(i as usize).next()
     }
 }
 
@@ -349,9 +366,6 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     let input_suggestion_len_min = cmp::min(input_len, suggestion_len) as i64;
 
-                    let input_chars: Vec<char> = input.chars().collect();
-                    let suggestion_chars: Vec<char> = suggestion.chars().collect();
-
                     if candidate_len == 0 {
                         distance = cmp::max(input_len, suggestion_len);
 
@@ -381,16 +395,23 @@ impl<T: StringStrategy> SymSpell<T> {
                                     (suggestion_len + 1 - input_suggestion_len_min) as usize,
                                 )))
                         || ((input_suggestion_len_min > 0)
-                            && (input_chars.get((input_len - input_suggestion_len_min) as usize)
-                                != suggestion_chars
-                                    .get((suggestion_len - input_suggestion_len_min) as usize))
-                            && ((input_chars
-                                .get((input_len - input_suggestion_len_min - 1) as usize)
-                                != suggestion_chars
-                                    .get((suggestion_len - input_suggestion_len_min) as usize))
-                                || (input_chars.get((input_len - input_suggestion_len_min) as usize)
-                                    != suggestion_chars.get(
-                                        (suggestion_len - input_suggestion_len_min - 1) as usize,
+                            && (self.string_strategy
+                                .at(input, (input_len - input_suggestion_len_min) as isize)
+                                != self.string_strategy.at(
+                                    input,
+                                    (suggestion_len - input_suggestion_len_min) as isize,
+                                ))
+                            && ((self.string_strategy
+                                .at(input, (input_len - input_suggestion_len_min - 1) as isize)
+                                != self.string_strategy.at(
+                                    input,
+                                    (suggestion_len - input_suggestion_len_min) as isize,
+                                ))
+                                || (self.string_strategy
+                                    .at(input, (input_len - input_suggestion_len_min) as isize)
+                                    != self.string_strategy.at(
+                                        input,
+                                        (suggestion_len - input_suggestion_len_min - 1) as isize,
                                     )))) {
                         continue;
                     } else {
