@@ -6,21 +6,19 @@ pub enum DistanceAlgorithm {
 }
 
 pub struct EditDistance {
-    base_string: String,
     algorithm: DistanceAlgorithm,
 }
 
 impl EditDistance {
-    pub fn new(base_string: &str, distance_algorithm: DistanceAlgorithm) -> EditDistance {
+    pub fn new(distance_algorithm: DistanceAlgorithm) -> EditDistance {
         EditDistance {
-            base_string: base_string.to_string(),
             algorithm: distance_algorithm,
         }
     }
 
-    pub fn compare(&self, other: &str, max_distance: i64) -> i64 {
+    pub fn compare(&self, string: &str, other: &str, max_distance: i64) -> i64 {
         let distance = match self.algorithm {
-            DistanceAlgorithm::Damerau => damerau_levenshtein(&self.base_string, other),
+            DistanceAlgorithm::Damerau => damerau_levenshtein(string, other),
         };
 
         if distance <= max_distance as usize {

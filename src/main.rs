@@ -11,8 +11,8 @@ mod symspell;
 
 use std::{thread, time};
 
-use string_strategy::{AsciiStringStrategy};
 use dev::measure;
+use string_strategy::AsciiStringStrategy;
 use symspell::{SymSpell, Verbosity};
 
 fn main() {
@@ -37,6 +37,11 @@ fn main() {
 
     measure("lookup", || {
         let result = symspell.lookup("aleko", Verbosity::All, 2);
+        println!("{:?}", result);
+    });
+
+    measure("lookup_compound", || {
+        let result = symspell.lookup_compound("pekníchlapi", 2);
         println!("{:?}", result);
     });
 

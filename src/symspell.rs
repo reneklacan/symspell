@@ -1,4 +1,6 @@
+use std::i64;
 use std::cmp;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
@@ -8,10 +10,9 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use unidecode::unidecode;
 
-use edit_distance::{EditDistance, DistanceAlgorithm};
-use string_strategy::{StringStrategy};
+use edit_distance::{DistanceAlgorithm, EditDistance};
+use string_strategy::StringStrategy;
 use suggest_item::SuggestItem;
-
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Verbosity {
@@ -111,7 +112,7 @@ impl<T: StringStrategy> SymSpell<T> {
             candidates.push(input.to_string());
         }
 
-        let distance_comparer = EditDistance::new(input, self.distance_algorithm.clone());
+        let distance_comparer = EditDistance::new(self.distance_algorithm.clone());
 
         while candidate_pointer < candidates.len() {
             let candidate = &candidates.get(candidate_pointer).unwrap().clone();
@@ -219,7 +220,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         }
                         hashset2.insert(suggestion.to_string());
 
-                        distance = distance_comparer.compare(suggestion, max_edit_distance2);
+                        distance = distance_comparer.compare(input, suggestion, max_edit_distance2);
 
                         if distance < 0 {
                             continue;
@@ -428,5 +429,177 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut hasher = DefaultHasher::new();
         s.hash(&mut hasher);
         hasher.finish()
+    }
+
+    fn parse_words(&self, text: &str) -> Vec<String> {
+        text.split_whitespace().map(|s| s.to_string()).collect()
+    }
+
+    pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<SuggestItem> {
+        //parse input string into single terms
+        let term_list1 = self.parse_words(&self.string_strategy.prepare(input));
+
+        // let mut suggestions_previous_term: Vec<SuggestItem> = Vec::new();                  //suggestions for a single term
+        let mut suggestions: Vec<SuggestItem>;
+        let mut suggestion_parts: Vec<SuggestItem> = Vec::new();
+        let distance_comparer = EditDistance::new(self.distance_algorithm.clone());
+
+        //translate every term to its best suggestion, otherwise it remains unchanged
+        let mut last_combi = false;
+
+        for (i, term) in term_list1.iter().enumerate() {
+            // let mut suggestions_previous_term: Vec<SuggestItem> = Vec::new();
+
+            // for suggestion in suggestions {
+            //     suggestions_previous_term.push(suggestion.clone());
+            // }
+            suggestions = self.lookup(term, Verbosity::Top, edit_distance_max);
+
+            //combi check, always before split
+            if (i > 0) && !last_combi {
+                let mut suggestions_combi: Vec<SuggestItem> = self.lookup(
+                    &format!("{}{}", term_list1[i - 1], term_list1[i]),
+                    Verbosity::Top,
+                    edit_distance_max,
+                );
+
+                if suggestions_combi.len() > 0 {
+                    let best1 = suggestion_parts[suggestion_parts.len() - 1].clone();
+                    let mut best2 = SuggestItem::empty();
+
+                    if suggestions.len() > 0 {
+                        best2 = suggestions[0].clone();
+                    } else {
+                        best2.term = term_list1[i].clone();
+                        best2.distance = edit_distance_max + 1;
+                        best2.count = 0;
+                    }
+                    //if (suggestions_combi[0].distance + 1 < DamerauLevenshteinDistance(term_list1[i - 1] + " " + term_list1[i], best1.term + " " + best2.term))
+                    let distance1 = distance_comparer.compare(
+                        &format!("{} {}", term_list1[i - 1], term_list1[i]),
+                        &format!("{} {}", best1.term, best2.term),
+                        edit_distance_max,
+                    );
+
+                    if (distance1 >= 0) && (suggestions_combi[0].distance + 1 < distance1) {
+                        suggestions_combi[0].distance += 1;
+                        let last_i = suggestion_parts.len() - 1;
+                        suggestion_parts[last_i] = suggestions_combi[0].clone();
+                        last_combi = true;
+                        continue;
+                    }
+                }
+            }
+            last_combi = false;
+
+            //alway split terms without suggestion / never split terms with suggestion ed=0 / never split single char terms
+            if (suggestions.len() > 0)
+                && ((suggestions[0].distance == 0)
+                    || (self.string_strategy.len(&term_list1[i]) == 1))
+            {
+                //choose best suggestion
+                suggestion_parts.push(suggestions[0].clone());
+            } else {
+                //if no perfect suggestion, split word into pairs
+                let mut suggestions_split: Vec<SuggestItem> = Vec::new();
+
+                //add original term
+                if suggestions.len() > 0 {
+                    suggestions_split.push(suggestions[0].clone());
+                }
+
+                let term_length = self.string_strategy.len(&term_list1[i]);
+
+                if term_length > 1 {
+                    for j in 1..term_length {
+                        let part1 = self.string_strategy.slice(&term_list1[i], 0, j);
+                        let part2 = self.string_strategy.slice(&term_list1[i], j, term_length);
+
+                        let mut suggestion_split = SuggestItem::empty();
+
+                        let suggestions1 = self.lookup(&part1, Verbosity::Top, edit_distance_max);
+
+                        if suggestions1.len() > 0 {
+                            if (suggestions.len() > 0)
+                                && (suggestions[0].term == suggestions1[0].term)
+                            {
+                                break;
+                            } //if split correction1 == einzelwort correction
+
+                            let suggestions2 =
+                                self.lookup(&part2, Verbosity::Top, edit_distance_max);
+
+                            if suggestions2.len() > 0 {
+                                if (suggestions.len() > 0)
+                                    && (suggestions[0].term == suggestions2[0].term)
+                                {
+                                    break;
+                                } //if split correction1 == einzelwort correction
+
+                                //select best suggestion for split pair
+                                suggestion_split.term =
+                                    format!("{} {}", suggestions1[0].term, suggestions2[0].term);
+                                let mut distance2 = distance_comparer.compare(
+                                    &term_list1[i],
+                                    &format!("{} {}", suggestions1[0].term, suggestions2[0].term),
+                                    edit_distance_max,
+                                );
+
+                                if distance2 < 0 {
+                                    distance2 = edit_distance_max + 1;
+                                }
+
+                                suggestion_split.distance = distance2;
+                                suggestion_split.count =
+                                    cmp::min(suggestions1[0].count, suggestions2[0].count);
+                                suggestions_split.push(suggestion_split.clone());
+
+                                //early termination of split
+                                if suggestion_split.distance == 1 {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if suggestions_split.len() > 0 {
+                        //select best suggestion for split pair
+                        suggestions_split.sort_by(|x, y| {
+                            x.distance.cmp(&y.distance).then(x.count.cmp(&y.count))
+                        });
+                        suggestion_parts.push(suggestions_split[0].clone());
+                    } else {
+                        let mut si = SuggestItem::empty();
+                        si.term = term_list1[i].clone();
+                        si.count = 0;
+                        si.distance = edit_distance_max + 1;
+                        suggestion_parts.push(si);
+                    }
+                } else {
+                    let mut si = SuggestItem::empty();
+                    si.term = term_list1[i].clone();
+                    si.count = 0;
+                    si.distance = edit_distance_max + 1;
+                    suggestion_parts.push(si);
+                }
+            }
+        }
+
+        let mut suggestion = SuggestItem::empty();
+
+        suggestion.count = i64::MAX;
+
+        let mut s = "".to_string();
+
+        for si in suggestion_parts {
+            s.push_str(&si.term);
+            s.push_str(" ");
+            suggestion.count = cmp::min(suggestion.count, si.count);
+        }
+
+        suggestion.term = s.trim().to_string();
+        suggestion.distance = distance_comparer.compare(input, &suggestion.term, i64::MAX);
+
+        vec![suggestion]
     }
 }

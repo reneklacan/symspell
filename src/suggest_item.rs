@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SuggestItem {
     pub term: String,
     pub distance: i64,
@@ -8,6 +8,13 @@ pub struct SuggestItem {
 }
 
 impl SuggestItem {
+    pub fn empty() -> SuggestItem {
+        SuggestItem {
+            term: "".to_string(),
+            distance: 0,
+            count: 0,
+        }
+    }
     pub fn new(term: &str, distance: i64, count: i64) -> SuggestItem {
         SuggestItem {
             term: term.to_string(),
