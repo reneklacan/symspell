@@ -18,7 +18,7 @@ use strsim::damerau_levenshtein;
 use unidecode::unidecode;
 
 fn main() {
-    let mut symspell = SymSpell::new(
+    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::new(
         2, // max dictionary edit distance
         7, // prefix length
         1, // count threshold
@@ -72,7 +72,7 @@ pub enum DistanceAlgorithm {
     Damerau,
 }
 
-pub struct SymSpell {
+pub struct SymSpell<T: StringStrategy> {
     max_dictionary_edit_distance: i64,
     prefix_length: i64,
     count_threshold: i64,
@@ -80,6 +80,7 @@ pub struct SymSpell {
     deletes: HashMap<u64, Vec<String>>,
     words: HashMap<String, i64>,
     distance_algorithm: DistanceAlgorithm,
+    string_strategy: T,
 }
 
 #[derive(Debug)]
@@ -153,12 +154,74 @@ impl EditDistance {
     }
 }
 
-impl SymSpell {
+pub trait StringStrategy {
+    fn new() -> Self;
+    fn prepare(&self, s: &str) -> String;
+    fn len(&self, s: &str) -> usize;
+    fn remove(&self, s: &str, index: usize) -> String;
+    fn slice(&self, s: &str, start: usize, end: usize) -> String;
+}
+
+pub struct AsciiStringStrategy {
+}
+
+impl StringStrategy for AsciiStringStrategy {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn prepare(&self, s: &str) -> String {
+        unidecode(s)
+    }
+
+    fn len(&self, s: &str) -> usize {
+        s.len()
+    }
+
+    fn remove(&self, s: &str, index: usize) -> String {
+        let mut x = s.to_string();
+        x.remove(index);
+        x
+    }
+
+    fn slice(&self, s: &str, start: usize, end: usize) -> String {
+        unsafe { s.slice_unchecked(start, end) }.to_string()
+    }
+}
+
+pub struct UnicodeiStringStrategy {
+}
+
+impl StringStrategy for UnicodeiStringStrategy {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn prepare(&self, s: &str) -> String {
+        s.to_string()
+    }
+
+    fn len(&self, s: &str) -> usize {
+        s.chars().count()
+    }
+
+    fn remove(&self, s: &str, index: usize) -> String {
+        let mut x = s.to_string();
+        x.remove(index);
+        x
+    }
+
+    fn slice(&self, s: &str, start: usize, end: usize) -> String {
+        unsafe { s.slice_unchecked(start, end) }.to_string()
+    }
+}
+
+impl<T: StringStrategy> SymSpell<T> {
     pub fn new(
         max_dictionary_edit_distance: i64,
         prefix_length: i64,
         count_threshold: i64,
-    ) -> SymSpell {
+    ) -> SymSpell<T> {
         SymSpell {
             max_dictionary_edit_distance: max_dictionary_edit_distance,
             prefix_length: prefix_length,
@@ -167,10 +230,11 @@ impl SymSpell {
             deletes: HashMap::new(),
             words: HashMap::new(),
             distance_algorithm: DistanceAlgorithm::Damerau,
+            string_strategy: T::new(),
         }
     }
 
-    pub fn new_with_defaults() -> SymSpell {
+    pub fn new_with_defaults() -> SymSpell<T> {
         SymSpell {
             max_dictionary_edit_distance: 2,
             prefix_length: 7,
@@ -179,6 +243,7 @@ impl SymSpell {
             deletes: HashMap::new(),
             words: HashMap::new(),
             distance_algorithm: DistanceAlgorithm::Damerau,
+            string_strategy: T::new(),
         }
     }
 
@@ -195,7 +260,7 @@ impl SymSpell {
         let mut suggestions: Vec<SuggestItem> = Vec::new();
 
         let input = &unidecode(input);
-        let input_len = input.chars().count() as i64;
+        let input_len = input.len() as i64;
 
         if input_len - self.max_dictionary_edit_distance > self.max_length {
             return suggestions;
@@ -458,10 +523,11 @@ impl SymSpell {
             let line_parts: Vec<&str> = line_str.split(separator).collect();
 
             if line_parts.len() >= 2 {
-                let key = unidecode(line_parts[term_index as usize]);
+                // let key = unidecode(line_parts[term_index as usize]);
+                let key = self.string_strategy.prepare(line_parts[term_index as usize]);
                 let count = line_parts[count_index as usize].parse::<i64>().unwrap();
 
-                self.create_dictionary_entry(&key, count);
+                self.create_dictionary_entry(key, count);
             }
         }
 
@@ -471,25 +537,27 @@ impl SymSpell {
         true
     }
 
-    fn create_dictionary_entry(&mut self, key: &str, count: i64) -> bool {
+    fn create_dictionary_entry(&mut self, key: String, count: i64) -> bool {
         if count < self.count_threshold {
             return false;
         }
 
-        self.words.insert(key.to_string(), count);
+        self.words.insert(key.clone(), count);
 
-        if key.chars().count() as i64 > self.max_length {
-            self.max_length = key.chars().count() as i64;
+        let key_len = self.string_strategy.len(&key);
+
+        if key_len as i64 > self.max_length {
+            self.max_length = key_len as i64;
         }
 
-        let edits = self.edits_prefix(key);
+        let edits = self.edits_prefix(&key);
 
         for delete in edits {
             let delete_hash = self.get_string_hash(&delete);
 
             if self.deletes.contains_key(&delete_hash) {
                 let suggestions = self.deletes.get_mut(&delete_hash).unwrap();
-                suggestions.push(key.to_string());
+                suggestions.push(key.clone());
             } else {
                 self.deletes.insert(delete_hash, vec![key.to_string()]);
             }
@@ -501,14 +569,14 @@ impl SymSpell {
     fn edits_prefix(&self, key: &str) -> HashSet<String> {
         let mut hash_set = HashSet::new();
 
-        let key_chars_count = key.chars().count() as i64;
+        let key_chars_count = self.string_strategy.len(key) as i64;
 
         if key_chars_count <= self.max_dictionary_edit_distance {
             hash_set.insert("".to_string());
         }
 
         if key_chars_count > self.prefix_length {
-            hash_set.insert(key.chars().take(self.prefix_length as usize).collect());
+            hash_set.insert(self.string_strategy.slice(key, 0, self.prefix_length as usize) );
         } else {
             hash_set.insert(key.to_string());
         }
@@ -520,14 +588,11 @@ impl SymSpell {
 
     fn edits(&self, word: &str, edit_distance: i64, delete_words: &mut HashSet<String>) {
         let edit_distance = edit_distance + 1;
+        let word_len = self.string_strategy.len(word);
 
-        if word.chars().count() > 1 {
-            for i in 0..word.chars().count() {
-                let delete: String = word.chars()
-                    .enumerate()
-                    .filter(|(ii, _)| ii != &i)
-                    .map(|(_, ch)| ch)
-                    .collect();
+        if word_len > 1 {
+            for i in 0..word_len {
+                let delete = self.string_strategy.remove(word, i);
 
                 if !delete_words.contains(&delete) {
                     delete_words.insert(delete.clone());
