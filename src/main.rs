@@ -206,13 +206,16 @@ impl StringStrategy for UnicodeiStringStrategy {
     }
 
     fn remove(&self, s: &str, index: usize) -> String {
-        let mut x = s.to_string();
-        x.remove(index);
-        x
+        s 
+            .chars()
+            .enumerate()
+            .filter(|(ii, _)| ii != &index)
+            .map(|(_, ch)| ch)
+            .collect()
     }
 
     fn slice(&self, s: &str, start: usize, end: usize) -> String {
-        unsafe { s.slice_unchecked(start, end) }.to_string()
+        s.chars().skip(start).take(end - start).collect()
     }
 }
 
@@ -260,7 +263,7 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut suggestions: Vec<SuggestItem> = Vec::new();
 
         let input = &unidecode(input);
-        let input_len = input.len() as i64;
+        let input_len = self.string_strategy.len(input) as i64;
 
         if input_len - self.max_dictionary_edit_distance > self.max_length {
             return suggestions;
@@ -288,7 +291,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
         if input_prefix_len > self.prefix_length {
             input_prefix_len = self.prefix_length;
-            candidates.push(input.chars().take(input_prefix_len as usize).collect());
+            candidates.push(self.string_strategy.slice(input, 0, input_prefix_len as usize));
         } else {
             candidates.push(input.to_string());
         }
@@ -298,7 +301,7 @@ impl<T: StringStrategy> SymSpell<T> {
         while candidate_pointer < candidates.len() {
             let candidate = &candidates.get(candidate_pointer).unwrap().clone();
             candidate_pointer += 1;
-            let candidate_len = candidate.chars().count() as i64;
+            let candidate_len = self.string_strategy.len(candidate) as i64;
             let length_diff = input_prefix_len - candidate_len;
 
             if length_diff > max_edit_distance2 {
@@ -312,7 +315,7 @@ impl<T: StringStrategy> SymSpell<T> {
                 let dist_suggestions = &self.deletes[&self.get_string_hash(&candidate)];
 
                 for suggestion in dist_suggestions {
-                    let suggestion_len = suggestion.chars().count() as i64;
+                    let suggestion_len = self.string_strategy.len(suggestion) as i64;
 
                     if suggestion == input {
                         continue;
@@ -446,12 +449,7 @@ impl<T: StringStrategy> SymSpell<T> {
                 }
 
                 for i in 0..candidate.chars().count() {
-                    let delete: String = candidate
-                        .chars()
-                        .enumerate()
-                        .filter(|(ii, _)| ii != &i)
-                        .map(|(_, ch)| ch)
-                        .collect();
+                    let delete = self.string_strategy.remove(candidate, i);
 
                     if !hashset1.contains(&delete) {
                         hashset1.insert(delete.clone());
