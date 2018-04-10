@@ -8,7 +8,14 @@ name = "symspell"
 version = "0.1.0"
 dependencies = [
  "strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unidecode 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "unidecode"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bb4f380125926a99e52bc279241539c018323fab05ad6368b56f93d9369ff550"
+"checksum unidecode 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "402bb19d8e03f1d1a7450e2bd613980869438e0666331be3e073089124aa1adc"

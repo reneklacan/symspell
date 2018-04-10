@@ -1,4 +1,7 @@
+#![feature(duration_extras)]
+
 extern crate strsim;
+extern crate unidecode;
 
 use std::cmp;
 use std::cmp::Ordering;
@@ -9,9 +12,10 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::u64;
+use std::time::Instant;
 use std::{thread, time};
 use strsim::damerau_levenshtein;
+use unidecode::unidecode;
 
 fn main() {
     let mut symspell = SymSpell::new(
@@ -20,19 +24,40 @@ fn main() {
         1, // count threshold
     );
     // symspell.load_dictionary("corpus.txt", 0, 1);
-    symspell.load_dictionary(
-        "prim-7.0-public-vyv-word-frequency.txt",
-        0,
-        1,
-        "\t",
-        500_000,
+
+    measure("load_dictionary", || {
+        symspell.load_dictionary(
+            "new_fdb.txt",
+            // "prim-7.0-public-vyv-word-frequency.txt",
+            // "corpus.txt",
+            0,
+            1,
+            "\t",
+            1_000_000,
+        );
+    });
+
+    measure("lookup", || {
+        let result = symspell.lookup("aleko", Verbosity::All, 2);
+        println!("{:?}", result);
+    });
+
+    thread::sleep(time::Duration::from_secs(10000000));
+}
+
+fn measure<F>(name: &str, mut f: F)
+where
+    F: FnMut() -> (),
+{
+    let now = Instant::now();
+    f();
+    let elapsed = now.elapsed();
+
+    println!(
+        "{} took {}ms",
+        name,
+        (elapsed.as_secs() * 1000000 + elapsed.subsec_micros() as u64) as f64 / 1000.0
     );
-
-    let result = symspell.lookup("situaciu", Verbosity::All, 2);
-    println!("{:?}", result);
-
-    let sleep_time = time::Duration::from_secs(9999999999);
-    thread::sleep(sleep_time);
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -139,8 +164,8 @@ impl SymSpell {
             prefix_length: prefix_length,
             count_threshold: count_threshold,
             max_length: 0,
-            deletes: HashMap::with_capacity(500_000),
-            words: HashMap::with_capacity(500_000),
+            deletes: HashMap::new(),
+            words: HashMap::new(),
             distance_algorithm: DistanceAlgorithm::Damerau,
         }
     }
@@ -169,6 +194,7 @@ impl SymSpell {
 
         let mut suggestions: Vec<SuggestItem> = Vec::new();
 
+        let input = &unidecode(input);
         let input_len = input.chars().count() as i64;
 
         if input_len - self.max_dictionary_edit_distance > self.max_length {
@@ -246,6 +272,9 @@ impl SymSpell {
 
                     let input_suggestion_len_min = cmp::min(input_len, suggestion_len) as i64;
 
+                    let input_chars: Vec<char> = input.chars().collect();
+                    let suggestion_chars: Vec<char> = suggestion.chars().collect();
+
                     if candidate_len == 0 {
                         distance = cmp::max(input_len, suggestion_len);
 
@@ -277,22 +306,15 @@ impl SymSpell {
                                     .skip((suggestion_len + 1 - input_suggestion_len_min) as usize)
                                     .collect::<String>()))
                         || ((input_suggestion_len_min > 0)
-                            && (input
-                                .chars()
-                                .nth((input_len - input_suggestion_len_min) as usize)
-                                != suggestion
-                                    .chars()
-                                    .nth((suggestion_len - input_suggestion_len_min) as usize))
-                            && ((input
-                                .chars()
-                                .nth((input_len - input_suggestion_len_min - 1) as usize)
-                                != suggestion
-                                    .chars()
-                                    .nth((suggestion_len - input_suggestion_len_min) as usize))
-                                || (input
-                                    .chars()
-                                    .nth((input_len - input_suggestion_len_min) as usize)
-                                    != suggestion.chars().nth(
+                            && (input_chars.get((input_len - input_suggestion_len_min) as usize)
+                                != suggestion_chars
+                                    .get((suggestion_len - input_suggestion_len_min) as usize))
+                            && ((input_chars
+                                .get((input_len - input_suggestion_len_min - 1) as usize)
+                                != suggestion_chars
+                                    .get((suggestion_len - input_suggestion_len_min) as usize))
+                                || (input_chars.get((input_len - input_suggestion_len_min) as usize)
+                                    != suggestion_chars.get(
                                         (suggestion_len - input_suggestion_len_min - 1) as usize,
                                     )))) {
                         continue;
@@ -436,10 +458,10 @@ impl SymSpell {
             let line_parts: Vec<&str> = line_str.split(separator).collect();
 
             if line_parts.len() >= 2 {
-                let key = line_parts[term_index as usize];
+                let key = unidecode(line_parts[term_index as usize]);
                 let count = line_parts[count_index as usize].parse::<i64>().unwrap();
 
-                self.create_dictionary_entry(key, count);
+                self.create_dictionary_entry(&key, count);
             }
         }
 
