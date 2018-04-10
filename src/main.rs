@@ -160,10 +160,10 @@ pub trait StringStrategy {
     fn len(&self, s: &str) -> usize;
     fn remove(&self, s: &str, index: usize) -> String;
     fn slice(&self, s: &str, start: usize, end: usize) -> String;
+    fn suffix(&self, s: &str, start: usize) -> String;
 }
 
-pub struct AsciiStringStrategy {
-}
+pub struct AsciiStringStrategy {}
 
 impl StringStrategy for AsciiStringStrategy {
     fn new() -> Self {
@@ -187,10 +187,13 @@ impl StringStrategy for AsciiStringStrategy {
     fn slice(&self, s: &str, start: usize, end: usize) -> String {
         unsafe { s.slice_unchecked(start, end) }.to_string()
     }
+
+    fn suffix(&self, s: &str, start: usize) -> String {
+        self.slice(s, start, s.len())
+    }
 }
 
-pub struct UnicodeiStringStrategy {
-}
+pub struct UnicodeiStringStrategy {}
 
 impl StringStrategy for UnicodeiStringStrategy {
     fn new() -> Self {
@@ -206,8 +209,7 @@ impl StringStrategy for UnicodeiStringStrategy {
     }
 
     fn remove(&self, s: &str, index: usize) -> String {
-        s 
-            .chars()
+        s.chars()
             .enumerate()
             .filter(|(ii, _)| ii != &index)
             .map(|(_, ch)| ch)
@@ -216,6 +218,10 @@ impl StringStrategy for UnicodeiStringStrategy {
 
     fn slice(&self, s: &str, start: usize, end: usize) -> String {
         s.chars().skip(start).take(end - start).collect()
+    }
+
+    fn suffix(&self, s: &str, start: usize) -> String {
+        s.chars().skip(start).collect::<String>()
     }
 }
 
@@ -291,7 +297,10 @@ impl<T: StringStrategy> SymSpell<T> {
 
         if input_prefix_len > self.prefix_length {
             input_prefix_len = self.prefix_length;
-            candidates.push(self.string_strategy.slice(input, 0, input_prefix_len as usize));
+            candidates.push(
+                self.string_strategy
+                    .slice(input, 0, input_prefix_len as usize),
+            );
         } else {
             candidates.push(input.to_string());
         }
@@ -365,14 +374,12 @@ impl<T: StringStrategy> SymSpell<T> {
                         hashset2.insert(suggestion.to_string());
                     } else if (self.prefix_length - max_edit_distance == candidate_len)
                         && (((input_suggestion_len_min - self.prefix_length) > 1)
-                            && (input
-                                .chars()
-                                .skip((input_len + 1 - input_suggestion_len_min) as usize)
-                                .collect::<String>()
-                                != suggestion
-                                    .chars()
-                                    .skip((suggestion_len + 1 - input_suggestion_len_min) as usize)
-                                    .collect::<String>()))
+                            && (self.string_strategy
+                                .suffix(input, (input_len + 1 - input_suggestion_len_min) as usize)
+                                != self.string_strategy.suffix(
+                                    suggestion,
+                                    (suggestion_len + 1 - input_suggestion_len_min) as usize,
+                                )))
                         || ((input_suggestion_len_min > 0)
                             && (input_chars.get((input_len - input_suggestion_len_min) as usize)
                                 != suggestion_chars
@@ -522,7 +529,8 @@ impl<T: StringStrategy> SymSpell<T> {
 
             if line_parts.len() >= 2 {
                 // let key = unidecode(line_parts[term_index as usize]);
-                let key = self.string_strategy.prepare(line_parts[term_index as usize]);
+                let key = self.string_strategy
+                    .prepare(line_parts[term_index as usize]);
                 let count = line_parts[count_index as usize].parse::<i64>().unwrap();
 
                 self.create_dictionary_entry(key, count);
@@ -574,7 +582,10 @@ impl<T: StringStrategy> SymSpell<T> {
         }
 
         if key_chars_count > self.prefix_length {
-            hash_set.insert(self.string_strategy.slice(key, 0, self.prefix_length as usize) );
+            hash_set.insert(
+                self.string_strategy
+                    .slice(key, 0, self.prefix_length as usize),
+            );
         } else {
             hash_set.insert(key.to_string());
         }
