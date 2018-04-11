@@ -87,3 +87,43 @@ impl StringStrategy for UnicodeiStringStrategy {
         s.chars().skip(i as usize).next()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn prepare() {
+        assert_eq!(AsciiStringStrategy::new().prepare("čičina"), "cicina");
+    }
+
+    #[test]
+    fn ascii_slice_prefix() {
+        assert_eq!(AsciiStringStrategy::new().slice("daleko", 0, 3), "dal");
+    }
+
+    #[test]
+    fn ascii_slice_suffix() {
+        assert_eq!(AsciiStringStrategy::new().slice("daleko", 3, 6), "eko");
+    }
+
+    #[test]
+    fn ascii_remove() {
+        assert_eq!(AsciiStringStrategy::new().remove("daleko", 2), "daeko");
+    }
+
+    #[test]
+    fn ascii_at_negative() {
+        assert_eq!(AsciiStringStrategy::new().at("daleko", -2), None);
+    }
+
+    #[test]
+    fn ascii_at_correct() {
+        assert_eq!(AsciiStringStrategy::new().at("daleko", 3), Some('e'));
+    }
+
+    #[test]
+    fn ascii_at_over_limit() {
+        assert_eq!(AsciiStringStrategy::new().at("daleko", 6), None);
+    }
+}
