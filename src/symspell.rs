@@ -164,8 +164,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         }
                         hashset2.insert(suggestion.to_string());
                     } else if suggestion_len == 1 {
-                        distance = if !input
-                            .contains(suggestion.chars().take(1).collect::<String>().as_str())
+                        distance = if !input.contains(&self.string_strategy.slice(suggestion, 0, 1))
                         {
                             input_len
                         } else {
@@ -188,19 +187,19 @@ impl<T: StringStrategy> SymSpell<T> {
                             && (self.string_strategy
                                 .at(input, (input_len - input_suggestion_len_min) as isize)
                                 != self.string_strategy.at(
-                                    input,
+                                    suggestion,
                                     (suggestion_len - input_suggestion_len_min) as isize,
                                 ))
                             && ((self.string_strategy
                                 .at(input, (input_len - input_suggestion_len_min - 1) as isize)
                                 != self.string_strategy.at(
-                                    input,
+                                    suggestion,
                                     (suggestion_len - input_suggestion_len_min) as isize,
                                 ))
                                 || (self.string_strategy
                                     .at(input, (input_len - input_suggestion_len_min) as isize)
                                     != self.string_strategy.at(
-                                        input,
+                                        suggestion,
                                         (suggestion_len - input_suggestion_len_min - 1) as isize,
                                     )))) {
                         continue;
@@ -266,7 +265,7 @@ impl<T: StringStrategy> SymSpell<T> {
                     continue;
                 }
 
-                for i in 0..candidate.chars().count() {
+                for i in 0..self.string_strategy.len(candidate) {
                     let delete = self.string_strategy.remove(candidate, i);
 
                     if !hashset1.contains(&delete) {
@@ -301,10 +300,11 @@ impl<T: StringStrategy> SymSpell<T> {
         };
         let mut j = 0;
         for i in 0..delete_len {
-            let del_char = delete.chars().nth(i as usize).unwrap();
-            while j < suggestion_len && del_char != suggestion.chars().nth(j as usize).unwrap() {
+            let del_char = self.string_strategy.at(delete, i as isize).unwrap();
+            while j < suggestion_len && del_char != self.string_strategy.at(suggestion, j as isize).unwrap() {
                 j += 1;
             }
+
             if j == suggestion_len {
                 return false;
             }
@@ -318,7 +318,6 @@ impl<T: StringStrategy> SymSpell<T> {
         term_index: i64,
         count_index: i64,
         separator: &str,
-        max_records_count: usize,
     ) -> bool {
         if !Path::new(corpus).exists() {
             return false;
@@ -328,10 +327,6 @@ impl<T: StringStrategy> SymSpell<T> {
         let sr = BufReader::new(file);
 
         for (i, line) in sr.lines().enumerate() {
-            if i == max_records_count {
-                break;
-            }
-
             if i % 10_000 == 0 {
                 println!("progress: {}", i);
             }
@@ -368,6 +363,7 @@ impl<T: StringStrategy> SymSpell<T> {
         }
 
         let edits = self.edits_prefix(&key);
+        // println!("count: {}, edits: {:?}", edits.len(), edits);
 
         for delete in edits {
             let delete_hash = self.get_string_hash(&delete);
@@ -386,22 +382,20 @@ impl<T: StringStrategy> SymSpell<T> {
     fn edits_prefix(&self, key: &str) -> HashSet<String> {
         let mut hash_set = HashSet::new();
 
-        let key_chars_count = self.string_strategy.len(key) as i64;
+        let key_len = self.string_strategy.len(key) as i64;
 
-        if key_chars_count <= self.max_dictionary_edit_distance {
+        if key_len <= self.max_dictionary_edit_distance {
             hash_set.insert("".to_string());
         }
 
-        if key_chars_count > self.prefix_length {
-            hash_set.insert(
-                self.string_strategy
-                    .slice(key, 0, self.prefix_length as usize),
-            );
+        if key_len > self.prefix_length {
+            let shortened_key = self.string_strategy.slice(key, 0, self.prefix_length as usize);
+            hash_set.insert(shortened_key.clone());
+            self.edits(&shortened_key, 0, &mut hash_set);
         } else {
             hash_set.insert(key.to_string());
-        }
-
-        self.edits(key, 0, &mut hash_set);
+            self.edits(key, 0, &mut hash_set);
+        };
 
         hash_set
     }
@@ -456,7 +450,7 @@ impl<T: StringStrategy> SymSpell<T> {
             suggestions = self.lookup(term, Verbosity::Top, edit_distance_max);
 
             //combi check, always before split
-            if (i > 0) && !last_combi {
+            if i > 0 && !last_combi {
                 let mut suggestions_combi: Vec<SuggestItem> = self.lookup(
                     &format!("{}{}", term_list1[i - 1], term_list1[i]),
                     Verbosity::Top,
@@ -539,6 +533,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                 //select best suggestion for split pair
                                 suggestion_split.term =
                                     format!("{} {}", suggestions1[0].term, suggestions2[0].term);
+
                                 let mut distance2 = distance_comparer.compare(
                                     &term_list1[i],
                                     &format!("{} {}", suggestions1[0].term, suggestions2[0].term),

@@ -26,22 +26,28 @@ fn main_en() {
         7, // prefix length
         1, // count threshold
     );
+
     // symspell.load_dictionary("corpus.txt", 0, 1);
 
     measure("load_dictionary", || {
         symspell.load_dictionary(
+            // "data/frequency_dictionary_en_50.txt",
             "data/frequency_dictionary_en_82_765.txt",
             // "prim-7.0-public-vyv-word-frequency.txt",
             // "corpus.txt",
             0,
             1,
             " ",
-            1_000_000,
         );
     });
 
     measure("lookup_compound", || {
         let result = symspell.lookup_compound("whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him", 2);
+        println!("{:?}", result);
+    });
+
+    measure("lookup_compound", || {
+        let result = symspell.lookup_compound("the bigjest playrs in te strogsommer film slatew ith plety of funn", 2);
         println!("{:?}", result);
     });
 }
@@ -62,7 +68,6 @@ fn main_sk() {
             0,
             1,
             "\t",
-            1_000_000,
         );
     });
 
