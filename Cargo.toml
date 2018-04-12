@@ -1,8 +1,11 @@
 [package]
 name = "symspell"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Rene Klacan <rene.klacan@gmail.com>"]
 
 [dependencies]
 strsim = "^0.7"
 unidecode = "*"
+
+[[example]]
+name = "demo"

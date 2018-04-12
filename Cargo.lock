@@ -5,7 +5,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "symspell"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "unidecode 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",

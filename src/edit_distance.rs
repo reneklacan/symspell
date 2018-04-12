@@ -1,4 +1,5 @@
 use strsim::damerau_levenshtein;
+// use strsim::{damerau_levenshtein, hamming, jaro, jaro_winkler, levenshtein, osa_distance};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum DistanceAlgorithm {
