@@ -12,16 +12,8 @@ where
     let elapsed_ms = (elapsed.as_secs() * 1000000 + elapsed.subsec_micros() as u64) as f64 / 1000.0;
 
     if elapsed_ms < 1000.0 {
-        println!(
-            "{} took {} ms",
-            name,
-            elapsed_ms
-        );
+        println!("{} took {} ms", name, elapsed_ms);
     } else {
-        println!(
-            "{} took {} s",
-            name,
-            elapsed_ms as u64 as f64 / 1000.0
-        );
+        println!("{} took {} s", name, elapsed_ms as u64 as f64 / 1000.0);
     }
 }

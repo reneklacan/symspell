@@ -1,11 +1,11 @@
-use std::i64;
 use std::cmp;
 use std::cmp::Ordering;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
+use std::i64;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use unidecode::unidecode;
@@ -61,6 +61,36 @@ impl<T: StringStrategy> SymSpell<T> {
             distance_algorithm: DistanceAlgorithm::Damerau,
             string_strategy: T::new(),
         }
+    }
+
+    fn has_different_suffix(
+        &self,
+        max_edit_distance: i64,
+        input: &str,
+        input_len: i64,
+        candidate_len: i64,
+        suggestion: &str,
+        suggestion_len: i64,
+    ) -> bool {
+        let min = cmp::min(input_len, suggestion_len) as i64 - self.prefix_length;
+
+        (self.prefix_length - max_edit_distance == candidate_len)
+            && (((min - self.prefix_length) > 1)
+                && (self.string_strategy
+                    .suffix(input, (input_len + 1 - min) as usize)
+                    != self.string_strategy
+                        .suffix(suggestion, (suggestion_len + 1 - min) as usize)))
+            || ((min > 0)
+                && (self.string_strategy.at(input, (input_len - min) as isize)
+                    != self.string_strategy
+                        .at(suggestion, (suggestion_len - min) as isize))
+                && ((self.string_strategy
+                    .at(input, (input_len - min - 1) as isize)
+                    != self.string_strategy
+                        .at(suggestion, (suggestion_len - min) as isize))
+                    || (self.string_strategy.at(input, (input_len - min) as isize)
+                        != self.string_strategy
+                            .at(suggestion, (suggestion_len - min - 1) as isize))))
     }
 
     pub fn lookup(
@@ -128,9 +158,9 @@ impl<T: StringStrategy> SymSpell<T> {
             }
 
             if self.deletes.contains_key(&self.get_string_hash(&candidate)) {
-                let dist_suggestions = &self.deletes[&self.get_string_hash(&candidate)];
+                let dict_suggestions = &self.deletes[&self.get_string_hash(&candidate)];
 
-                for suggestion in dist_suggestions {
+                for suggestion in dict_suggestions {
                     let suggestion_len = self.string_strategy.len(suggestion) as i64;
 
                     if suggestion == input {
@@ -154,8 +184,6 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     let mut distance;
 
-                    let input_suggestion_len_min = cmp::min(input_len, suggestion_len) as i64;
-
                     if candidate_len == 0 {
                         distance = cmp::max(input_len, suggestion_len);
 
@@ -174,38 +202,20 @@ impl<T: StringStrategy> SymSpell<T> {
                         if distance > max_edit_distance2 || hashset2.contains(suggestion) {
                             continue;
                         }
+
                         hashset2.insert(suggestion.to_string());
-                    } else if (self.prefix_length - max_edit_distance == candidate_len)
-                        && (((input_suggestion_len_min - self.prefix_length) > 1)
-                            && (self.string_strategy
-                                .suffix(input, (input_len + 1 - input_suggestion_len_min) as usize)
-                                != self.string_strategy.suffix(
-                                    suggestion,
-                                    (suggestion_len + 1 - input_suggestion_len_min) as usize,
-                                )))
-                        || ((input_suggestion_len_min > 0)
-                            && (self.string_strategy
-                                .at(input, (input_len - input_suggestion_len_min) as isize)
-                                != self.string_strategy.at(
-                                    suggestion,
-                                    (suggestion_len - input_suggestion_len_min) as isize,
-                                ))
-                            && ((self.string_strategy
-                                .at(input, (input_len - input_suggestion_len_min - 1) as isize)
-                                != self.string_strategy.at(
-                                    suggestion,
-                                    (suggestion_len - input_suggestion_len_min) as isize,
-                                ))
-                                || (self.string_strategy
-                                    .at(input, (input_len - input_suggestion_len_min) as isize)
-                                    != self.string_strategy.at(
-                                        suggestion,
-                                        (suggestion_len - input_suggestion_len_min - 1) as isize,
-                                    )))) {
+                    } else if self.has_different_suffix(
+                        max_edit_distance,
+                        input,
+                        input_len,
+                        candidate_len,
+                        suggestion,
+                        suggestion_len,
+                    ) {
                         continue;
                     } else {
                         if verbosity != Verbosity::All
-                            && self.delete_in_suggestion_prefix(
+                            && !self.delete_in_suggestion_prefix(
                                 candidate,
                                 candidate_len,
                                 suggestion,
@@ -230,13 +240,12 @@ impl<T: StringStrategy> SymSpell<T> {
                         let suggestion_count = self.words[suggestion];
                         let si = SuggestItem::new(suggestion, distance, suggestion_count);
 
-                        if suggestions.len() > 1 {
+                        if suggestions.len() > 0 {
                             match verbosity {
                                 Verbosity::Closest => {
                                     if distance < max_edit_distance2 {
                                         suggestions.clear();
                                     }
-                                    break;
                                 }
                                 Verbosity::Top => {
                                     if distance < max_edit_distance2
@@ -260,13 +269,13 @@ impl<T: StringStrategy> SymSpell<T> {
                 }
             }
 
-            if (length_diff < max_edit_distance) && (candidate_len <= self.prefix_length) {
+            if length_diff < max_edit_distance && candidate_len <= self.prefix_length {
                 if verbosity != Verbosity::All && length_diff >= max_edit_distance2 {
                     continue;
                 }
 
-                for i in 0..self.string_strategy.len(candidate) {
-                    let delete = self.string_strategy.remove(candidate, i);
+                for i in 0..candidate_len {
+                    let delete = self.string_strategy.remove(candidate, i as usize);
 
                     if !hashset1.contains(&delete) {
                         hashset1.insert(delete.clone());
@@ -301,7 +310,9 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut j = 0;
         for i in 0..delete_len {
             let del_char = self.string_strategy.at(delete, i as isize).unwrap();
-            while j < suggestion_len && del_char != self.string_strategy.at(suggestion, j as isize).unwrap() {
+            while j < suggestion_len
+                && del_char != self.string_strategy.at(suggestion, j as isize).unwrap()
+            {
                 j += 1;
             }
 
@@ -363,7 +374,6 @@ impl<T: StringStrategy> SymSpell<T> {
         }
 
         let edits = self.edits_prefix(&key);
-        // println!("count: {}, edits: {:?}", edits.len(), edits);
 
         for delete in edits {
             let delete_hash = self.get_string_hash(&delete);
@@ -389,7 +399,8 @@ impl<T: StringStrategy> SymSpell<T> {
         }
 
         if key_len > self.prefix_length {
-            let shortened_key = self.string_strategy.slice(key, 0, self.prefix_length as usize);
+            let shortened_key = self.string_strategy
+                .slice(key, 0, self.prefix_length as usize);
             hash_set.insert(shortened_key.clone());
             self.edits(&shortened_key, 0, &mut hash_set);
         } else {
@@ -426,7 +437,10 @@ impl<T: StringStrategy> SymSpell<T> {
     }
 
     fn parse_words(&self, text: &str) -> Vec<String> {
-        text.split_whitespace().map(|s| s.to_string()).collect()
+        text.to_lowercase()
+            .split_whitespace()
+            .map(|s| s.to_string())
+            .collect()
     }
 
     pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<SuggestItem> {
@@ -442,11 +456,6 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut last_combi = false;
 
         for (i, term) in term_list1.iter().enumerate() {
-            // let mut suggestions_previous_term: Vec<SuggestItem> = Vec::new();
-
-            // for suggestion in suggestions {
-            //     suggestions_previous_term.push(suggestion.clone());
-            // }
             suggestions = self.lookup(term, Verbosity::Top, edit_distance_max);
 
             //combi check, always before split
@@ -560,7 +569,9 @@ impl<T: StringStrategy> SymSpell<T> {
                     if suggestions_split.len() > 0 {
                         //select best suggestion for split pair
                         suggestions_split.sort_by(|x, y| {
-                            x.distance.cmp(&y.distance).then(x.count.cmp(&y.count))
+                            x.distance
+                                .cmp(&y.distance)
+                                .then(x.count.cmp(&y.count).reverse())
                         });
                         suggestion_parts.push(suggestions_split[0].clone());
                     } else {
