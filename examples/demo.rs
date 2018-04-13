@@ -2,9 +2,7 @@
 
 extern crate symspell;
 
-use std::{thread, time};
-
-use symspell::{AsciiStringStrategy, SymSpell, SymSpellBuilder, Verbosity};
+use symspell::{AsciiStringStrategy, SymSpell, Verbosity};
 
 fn main() {
     main_en();
@@ -13,42 +11,35 @@ fn main() {
 
 #[allow(dead_code)]
 fn main_en() {
-    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpellBuilder::default().build().unwrap();
-
-    // symspell.load_dictionary("corpus.txt", 0, 1);
+    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
 
     measure("load_dictionary", || {
         symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
     });
 
-    measure("lookup_compound", || {
-        let result = symspell.lookup_compound("whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him", 2);
-        // let result = symspell.lookup_compound("whereis", 2);
+    measure("lookup", || {
+        let result = symspell.lookup("roket", Verbosity::Top, 2);
         println!("{:?}", result);
     });
 
-    // measure("lookup", || {
-    //     let result = symspell.lookup("roket", Verbosity::Top, 2);
-    //     // let result = symspell.lookup_compound("whereis", 2);
-    //     println!("{:?}", result);
-    // });
+    measure("lookup_compound", || {
+        let result = symspell.lookup_compound("whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him", 2);
+        println!("{:?}", result);
+    });
 
-    // measure("lookup_compound", || {
-    //     let result = symspell.lookup_compound("the bigjest playrs in te strogsommer film slatew ith plety of funn", 2);
-    //     println!("{:?}", result);
-    // });
+    measure("lookup_compound", || {
+        let result = symspell.lookup_compound("the bigjest playrs in te strogsommer film slatew ith plety of funn", 2);
+        println!("{:?}", result);
+    });
 }
 
 #[allow(dead_code)]
 fn main_sk() {
-    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpellBuilder::default().build().unwrap();
-    // symspell.load_dictionary("corpus.txt", 0, 1);
+    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
 
     measure("load_dictionary", || {
         symspell.load_dictionary(
             "new_fdb.txt",
-            // "prim-7.0-public-vyv-word-frequency.txt",
-            // "corpus.txt",
             0,
             1,
             "\t",
@@ -64,8 +55,6 @@ fn main_sk() {
         let result = symspell.lookup_compound("pekníchlapi", 2);
         println!("{:?}", result);
     });
-
-    thread::sleep(time::Duration::from_secs(10000000));
 }
 
 use std::time::Instant;

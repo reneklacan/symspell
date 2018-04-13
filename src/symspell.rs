@@ -74,7 +74,7 @@ impl<T: StringStrategy> SymSpell<T> {
         let sr = BufReader::new(file);
 
         for (i, line) in sr.lines().enumerate() {
-            if i % 10_000 == 0 {
+            if i % 50_000 == 0 {
                 println!("progress: {}", i);
             }
             let line_str = line.unwrap();
@@ -89,9 +89,6 @@ impl<T: StringStrategy> SymSpell<T> {
                 self.create_dictionary_entry(key, count);
             }
         }
-
-        println!("deletes.len(): {}", self.deletes.len());
-        println!("words.len(): {}", self.words.len());
 
         true
     }
