@@ -11,6 +11,7 @@ repository = "https://github.com/reneklacan/symspell-rs"
 [dependencies]
 strsim = "^0.7"
 unidecode = "^0.3"
+derive_builder = "^0.5"
 
 [[example]]
 name = "demo"

@@ -10,7 +10,7 @@ use std::path::Path;
 use unidecode::unidecode;
 
 use edit_distance::{DistanceAlgorithm, EditDistance};
-use string_strategy::StringStrategy;
+use string_strategy::{StringStrategy};
 use suggest_item::SuggestItem;
 
 #[derive(Eq, PartialEq, Debug)]
@@ -20,48 +20,33 @@ pub enum Verbosity {
     All,
 }
 
+#[derive(Builder, PartialEq)]
 pub struct SymSpell<T: StringStrategy> {
+    #[builder(default = "2")]
     max_dictionary_edit_distance: i64,
+    #[builder(default = "7")]
     prefix_length: i64,
+    #[builder(default = "1")]
     count_threshold: i64,
+    #[builder(default = "0", setter(skip))]
     max_length: i64,
+    #[builder(default = "HashMap::new()", setter(skip))]
     deletes: HashMap<u64, Vec<String>>,
+    #[builder(default = "HashMap::new()", setter(skip))]
     words: HashMap<String, i64>,
+    #[builder(default = "DistanceAlgorithm::Damerau")]
     distance_algorithm: DistanceAlgorithm,
+    #[builder(default = "T::new()")]
     string_strategy: T,
 }
 
+impl<T: StringStrategy> Default for SymSpell<T> {
+    fn default() -> SymSpell<T> {
+        SymSpellBuilder::default().build().unwrap()
+    }
+}
+
 impl<T: StringStrategy> SymSpell<T> {
-    pub fn new(
-        max_dictionary_edit_distance: i64,
-        prefix_length: i64,
-        count_threshold: i64,
-    ) -> SymSpell<T> {
-        SymSpell {
-            max_dictionary_edit_distance: max_dictionary_edit_distance,
-            prefix_length: prefix_length,
-            count_threshold: count_threshold,
-            max_length: 0,
-            deletes: HashMap::new(),
-            words: HashMap::new(),
-            distance_algorithm: DistanceAlgorithm::Damerau,
-            string_strategy: T::new(),
-        }
-    }
-
-    pub fn new_with_defaults() -> SymSpell<T> {
-        SymSpell {
-            max_dictionary_edit_distance: 2,
-            prefix_length: 7,
-            count_threshold: 1,
-            max_length: 0,
-            deletes: HashMap::new(),
-            words: HashMap::new(),
-            distance_algorithm: DistanceAlgorithm::Damerau,
-            string_strategy: T::new(),
-        }
-    }
-
     fn has_different_suffix(
         &self,
         max_edit_distance: i64,

@@ -4,8 +4,7 @@ extern crate symspell;
 
 use std::{thread, time};
 
-use symspell::string_strategy::AsciiStringStrategy;
-use symspell::symspell::{SymSpell, Verbosity};
+use symspell::{AsciiStringStrategy, SymSpell, SymSpellBuilder, Verbosity};
 
 fn main() {
     main_en();
@@ -14,21 +13,12 @@ fn main() {
 
 #[allow(dead_code)]
 fn main_en() {
-    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::new(
-        2, // max dictionary edit distance
-        7, // prefix length
-        1, // count threshold
-    );
+    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpellBuilder::default().build().unwrap();
 
     // symspell.load_dictionary("corpus.txt", 0, 1);
 
     measure("load_dictionary", || {
-        symspell.load_dictionary(
-            "data/frequency_dictionary_en_82_765.txt",
-            0,
-            1,
-            " ",
-        );
+        symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
     });
 
     measure("lookup_compound", || {
@@ -51,11 +41,7 @@ fn main_en() {
 
 #[allow(dead_code)]
 fn main_sk() {
-    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::new(
-        2, // max dictionary edit distance
-        7, // prefix length
-        1, // count threshold
-    );
+    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpellBuilder::default().build().unwrap();
     // symspell.load_dictionary("corpus.txt", 0, 1);
 
     measure("load_dictionary", || {

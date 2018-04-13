@@ -1,6 +1,6 @@
 use unidecode::unidecode;
 
-pub trait StringStrategy {
+pub trait StringStrategy: Clone + Default {
     fn new() -> Self;
     fn prepare(&self, s: &str) -> String;
     fn len(&self, s: &str) -> usize;
@@ -10,7 +10,14 @@ pub trait StringStrategy {
     fn at(&self, s: &str, i: isize) -> Option<char>;
 }
 
+#[derive(Clone)]
 pub struct AsciiStringStrategy {}
+
+impl Default for AsciiStringStrategy {
+    fn default() -> AsciiStringStrategy {
+        AsciiStringStrategy {}
+    }
+}
 
 impl StringStrategy for AsciiStringStrategy {
     fn new() -> Self {
@@ -48,7 +55,14 @@ impl StringStrategy for AsciiStringStrategy {
     }
 }
 
+#[derive(Clone)]
 pub struct UnicodeiStringStrategy {}
+
+impl Default for UnicodeiStringStrategy {
+    fn default() -> UnicodeiStringStrategy {
+        UnicodeiStringStrategy {}
+    }
+}
 
 impl StringStrategy for UnicodeiStringStrategy {
     fn new() -> Self {
