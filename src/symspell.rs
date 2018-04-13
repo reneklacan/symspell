@@ -22,12 +22,16 @@ pub enum Verbosity {
 
 #[derive(Builder, PartialEq)]
 pub struct SymSpell<T: StringStrategy> {
+    /// Maximum edit distance for doing lookups.
     #[builder(default = "2")]
     max_dictionary_edit_distance: i64,
+    /// The length of word prefixes used for spell checking.
     #[builder(default = "7")]
     prefix_length: i64,
+    /// The minimum frequency count for dictionary words to be considered correct spellings.
     #[builder(default = "1")]
     count_threshold: i64,
+
     #[builder(default = "0", setter(skip))]
     max_length: i64,
     #[builder(default = "HashMap::new()", setter(skip))]
@@ -36,7 +40,7 @@ pub struct SymSpell<T: StringStrategy> {
     words: HashMap<String, i64>,
     #[builder(default = "DistanceAlgorithm::Damerau")]
     distance_algorithm: DistanceAlgorithm,
-    #[builder(default = "T::new()")]
+    #[builder(default = "T::new()", setter(skip))]
     string_strategy: T,
 }
 
@@ -77,6 +81,21 @@ impl<T: StringStrategy> SymSpell<T> {
                             .at(suggestion, (suggestion_len - min - 1) as isize))))
     }
 
+    /// Find suggested spellings for a given input word, using the maximum
+    /// edit distance specified during construction of the SymSpell dictionary.
+    /// # Arguments
+    ///
+    /// * `input` - The word being spell checked.
+    /// * `verbosity` - The value controlling the quantity/closeness of the retuned suggestions.
+    /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
+    /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+    /// symspell.lookup("whatver", Verbosity::Top, 2)
+    /// ```
     pub fn lookup(
         &self,
         input: &str,

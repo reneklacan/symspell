@@ -11,4 +11,5 @@ mod suggest_item;
 mod symspell;
 
 pub use string_strategy::{AsciiStringStrategy, StringStrategy, UnicodeiStringStrategy};
+pub use suggest_item::SuggestItem;
 pub use symspell::{SymSpell, SymSpellBuilder, Verbosity};
