@@ -51,38 +51,54 @@ impl<T: StringStrategy> Default for SymSpell<T> {
 }
 
 impl<T: StringStrategy> SymSpell<T> {
-    fn has_different_suffix(
-        &self,
-        max_edit_distance: i64,
-        input: &str,
-        input_len: i64,
-        candidate_len: i64,
-        suggestion: &str,
-        suggestion_len: i64,
+    /// Load multiple dictionary entries from a file of word/frequency count pairs.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `corpus` - The path+filename of the file.
+    /// * `term_index` - The column position of the word.
+    /// * `count_index` - The column position of the frequency count.
+    /// * `separator` - Separator between word and frequency
+    pub fn load_dictionary(
+        &mut self,
+        corpus: &str,
+        term_index: i64,
+        count_index: i64,
+        separator: &str,
     ) -> bool {
-        let min = cmp::min(input_len, suggestion_len) as i64 - self.prefix_length;
+        if !Path::new(corpus).exists() {
+            return false;
+        }
 
-        (self.prefix_length - max_edit_distance == candidate_len)
-            && (((min - self.prefix_length) > 1)
-                && (self.string_strategy
-                    .suffix(input, (input_len + 1 - min) as usize)
-                    != self.string_strategy
-                        .suffix(suggestion, (suggestion_len + 1 - min) as usize)))
-            || ((min > 0)
-                && (self.string_strategy.at(input, (input_len - min) as isize)
-                    != self.string_strategy
-                        .at(suggestion, (suggestion_len - min) as isize))
-                && ((self.string_strategy
-                    .at(input, (input_len - min - 1) as isize)
-                    != self.string_strategy
-                        .at(suggestion, (suggestion_len - min) as isize))
-                    || (self.string_strategy.at(input, (input_len - min) as isize)
-                        != self.string_strategy
-                            .at(suggestion, (suggestion_len - min - 1) as isize))))
+        let file = File::open(corpus).expect("file not found");
+        let sr = BufReader::new(file);
+
+        for (i, line) in sr.lines().enumerate() {
+            if i % 10_000 == 0 {
+                println!("progress: {}", i);
+            }
+            let line_str = line.unwrap();
+            let line_parts: Vec<&str> = line_str.split(separator).collect();
+
+            if line_parts.len() >= 2 {
+                // let key = unidecode(line_parts[term_index as usize]);
+                let key = self.string_strategy
+                    .prepare(line_parts[term_index as usize]);
+                let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+
+                self.create_dictionary_entry(key, count);
+            }
+        }
+
+        println!("deletes.len(): {}", self.deletes.len());
+        println!("words.len(): {}", self.words.len());
+
+        true
     }
 
     /// Find suggested spellings for a given input word, using the maximum
     /// edit distance specified during construction of the SymSpell dictionary.
+    /// 
     /// # Arguments
     ///
     /// * `input` - The word being spell checked.
@@ -295,157 +311,21 @@ impl<T: StringStrategy> SymSpell<T> {
         suggestions
     }
 
-    fn delete_in_suggestion_prefix(
-        &self,
-        delete: &str,
-        delete_len: i64,
-        suggestion: &str,
-        suggestion_len: i64,
-    ) -> bool {
-        if delete_len == 0 {
-            return true;
-        }
-        let suggestion_len = if self.prefix_length < suggestion_len {
-            self.prefix_length
-        } else {
-            suggestion_len
-        };
-        let mut j = 0;
-        for i in 0..delete_len {
-            let del_char = self.string_strategy.at(delete, i as isize).unwrap();
-            while j < suggestion_len
-                && del_char != self.string_strategy.at(suggestion, j as isize).unwrap()
-            {
-                j += 1;
-            }
-
-            if j == suggestion_len {
-                return false;
-            }
-        }
-        true
-    }
-
-    pub fn load_dictionary(
-        &mut self,
-        corpus: &str,
-        term_index: i64,
-        count_index: i64,
-        separator: &str,
-    ) -> bool {
-        if !Path::new(corpus).exists() {
-            return false;
-        }
-
-        let file = File::open(corpus).expect("file not found");
-        let sr = BufReader::new(file);
-
-        for (i, line) in sr.lines().enumerate() {
-            if i % 10_000 == 0 {
-                println!("progress: {}", i);
-            }
-            let line_str = line.unwrap();
-            let line_parts: Vec<&str> = line_str.split(separator).collect();
-
-            if line_parts.len() >= 2 {
-                // let key = unidecode(line_parts[term_index as usize]);
-                let key = self.string_strategy
-                    .prepare(line_parts[term_index as usize]);
-                let count = line_parts[count_index as usize].parse::<i64>().unwrap();
-
-                self.create_dictionary_entry(key, count);
-            }
-        }
-
-        println!("deletes.len(): {}", self.deletes.len());
-        println!("words.len(): {}", self.words.len());
-
-        true
-    }
-
-    fn create_dictionary_entry(&mut self, key: String, count: i64) -> bool {
-        if count < self.count_threshold {
-            return false;
-        }
-
-        self.words.insert(key.clone(), count);
-
-        let key_len = self.string_strategy.len(&key);
-
-        if key_len as i64 > self.max_length {
-            self.max_length = key_len as i64;
-        }
-
-        let edits = self.edits_prefix(&key);
-
-        for delete in edits {
-            let delete_hash = self.get_string_hash(&delete);
-
-            if self.deletes.contains_key(&delete_hash) {
-                let suggestions = self.deletes.get_mut(&delete_hash).unwrap();
-                suggestions.push(key.clone());
-            } else {
-                self.deletes.insert(delete_hash, vec![key.to_string()]);
-            }
-        }
-
-        true
-    }
-
-    fn edits_prefix(&self, key: &str) -> HashSet<String> {
-        let mut hash_set = HashSet::new();
-
-        let key_len = self.string_strategy.len(key) as i64;
-
-        if key_len <= self.max_dictionary_edit_distance {
-            hash_set.insert("".to_string());
-        }
-
-        if key_len > self.prefix_length {
-            let shortened_key = self.string_strategy
-                .slice(key, 0, self.prefix_length as usize);
-            hash_set.insert(shortened_key.clone());
-            self.edits(&shortened_key, 0, &mut hash_set);
-        } else {
-            hash_set.insert(key.to_string());
-            self.edits(key, 0, &mut hash_set);
-        };
-
-        hash_set
-    }
-
-    fn edits(&self, word: &str, edit_distance: i64, delete_words: &mut HashSet<String>) {
-        let edit_distance = edit_distance + 1;
-        let word_len = self.string_strategy.len(word);
-
-        if word_len > 1 {
-            for i in 0..word_len {
-                let delete = self.string_strategy.remove(word, i);
-
-                if !delete_words.contains(&delete) {
-                    delete_words.insert(delete.clone());
-
-                    if edit_distance < self.max_dictionary_edit_distance {
-                        self.edits(&delete, edit_distance, delete_words);
-                    }
-                }
-            }
-        }
-    }
-
-    fn get_string_hash(&self, s: &String) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        s.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    fn parse_words(&self, text: &str) -> Vec<String> {
-        text.to_lowercase()
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect()
-    }
-
+    /// Find suggested spellings for a given input sentence, using the maximum
+    /// edit distance specified during construction of the SymSpell dictionary.
+    /// 
+    /// # Arguments
+    ///
+    /// * `input` - The sentence being spell checked.
+    /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
+    /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+    /// symspell.lookup_compound("whereis th elove", 2)
+    /// ```
     pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<SuggestItem> {
         //parse input string into single terms
         let term_list1 = self.parse_words(&self.string_strategy.prepare(input));
@@ -610,5 +490,150 @@ impl<T: StringStrategy> SymSpell<T> {
         suggestion.distance = distance_comparer.compare(input, &suggestion.term, i64::MAX);
 
         vec![suggestion]
+    }
+
+    fn delete_in_suggestion_prefix(
+        &self,
+        delete: &str,
+        delete_len: i64,
+        suggestion: &str,
+        suggestion_len: i64,
+    ) -> bool {
+        if delete_len == 0 {
+            return true;
+        }
+        let suggestion_len = if self.prefix_length < suggestion_len {
+            self.prefix_length
+        } else {
+            suggestion_len
+        };
+        let mut j = 0;
+        for i in 0..delete_len {
+            let del_char = self.string_strategy.at(delete, i as isize).unwrap();
+            while j < suggestion_len
+                && del_char != self.string_strategy.at(suggestion, j as isize).unwrap()
+            {
+                j += 1;
+            }
+
+            if j == suggestion_len {
+                return false;
+            }
+        }
+        true
+    }
+
+
+    fn create_dictionary_entry(&mut self, key: String, count: i64) -> bool {
+        if count < self.count_threshold {
+            return false;
+        }
+
+        self.words.insert(key.clone(), count);
+
+        let key_len = self.string_strategy.len(&key);
+
+        if key_len as i64 > self.max_length {
+            self.max_length = key_len as i64;
+        }
+
+        let edits = self.edits_prefix(&key);
+
+        for delete in edits {
+            let delete_hash = self.get_string_hash(&delete);
+
+            if self.deletes.contains_key(&delete_hash) {
+                let suggestions = self.deletes.get_mut(&delete_hash).unwrap();
+                suggestions.push(key.clone());
+            } else {
+                self.deletes.insert(delete_hash, vec![key.to_string()]);
+            }
+        }
+
+        true
+    }
+
+    fn edits_prefix(&self, key: &str) -> HashSet<String> {
+        let mut hash_set = HashSet::new();
+
+        let key_len = self.string_strategy.len(key) as i64;
+
+        if key_len <= self.max_dictionary_edit_distance {
+            hash_set.insert("".to_string());
+        }
+
+        if key_len > self.prefix_length {
+            let shortened_key = self.string_strategy
+                .slice(key, 0, self.prefix_length as usize);
+            hash_set.insert(shortened_key.clone());
+            self.edits(&shortened_key, 0, &mut hash_set);
+        } else {
+            hash_set.insert(key.to_string());
+            self.edits(key, 0, &mut hash_set);
+        };
+
+        hash_set
+    }
+
+    fn edits(&self, word: &str, edit_distance: i64, delete_words: &mut HashSet<String>) {
+        let edit_distance = edit_distance + 1;
+        let word_len = self.string_strategy.len(word);
+
+        if word_len > 1 {
+            for i in 0..word_len {
+                let delete = self.string_strategy.remove(word, i);
+
+                if !delete_words.contains(&delete) {
+                    delete_words.insert(delete.clone());
+
+                    if edit_distance < self.max_dictionary_edit_distance {
+                        self.edits(&delete, edit_distance, delete_words);
+                    }
+                }
+            }
+        }
+    }
+
+    fn has_different_suffix(
+        &self,
+        max_edit_distance: i64,
+        input: &str,
+        input_len: i64,
+        candidate_len: i64,
+        suggestion: &str,
+        suggestion_len: i64,
+    ) -> bool {
+        let min = cmp::min(input_len, suggestion_len) as i64 - self.prefix_length;
+
+        (self.prefix_length - max_edit_distance == candidate_len)
+            && (((min - self.prefix_length) > 1)
+                && (self.string_strategy
+                    .suffix(input, (input_len + 1 - min) as usize)
+                    != self.string_strategy
+                        .suffix(suggestion, (suggestion_len + 1 - min) as usize)))
+            || ((min > 0)
+                && (self.string_strategy.at(input, (input_len - min) as isize)
+                    != self.string_strategy
+                        .at(suggestion, (suggestion_len - min) as isize))
+                && ((self.string_strategy
+                    .at(input, (input_len - min - 1) as isize)
+                    != self.string_strategy
+                        .at(suggestion, (suggestion_len - min) as isize))
+                    || (self.string_strategy.at(input, (input_len - min) as isize)
+                        != self.string_strategy
+                            .at(suggestion, (suggestion_len - min - 1) as isize))))
+    }
+
+    fn get_string_hash(&self, s: &String) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        s.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    fn parse_words(&self, text: &str) -> Vec<String> {
+        text.to_lowercase()
+            .split_whitespace()
+            .map(|s| s.to_string())
+            .collect()
     }
 }
