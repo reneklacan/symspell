@@ -1,12 +1,15 @@
 [package]
 name = "symspell"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT"
 authors = ["Rene Klacan <rene.klacan@gmail.com>"]
 keywords = ["spellcheck"]
 description = "Spelling correction & Fuzzy search"
-homepage = "https://github.com/reneklacan/symspell-rs"
-repository = "https://github.com/reneklacan/symspell-rs"
+homepage = "https://github.com/reneklacan/symspell"
+repository = "https://github.com/reneklacan/symspell"
+exclude = [
+    "data/*",
+]
 
 [dependencies]
 strsim = "^0.7"
