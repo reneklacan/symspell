@@ -7,9 +7,9 @@ extern crate unidecode;
 
 mod edit_distance;
 mod string_strategy;
-mod suggest_item;
+mod suggestion;
 mod symspell;
 
 pub use string_strategy::{AsciiStringStrategy, StringStrategy, UnicodeiStringStrategy};
-pub use suggest_item::SuggestItem;
+pub use suggestion::Suggestion;
 pub use symspell::{SymSpell, SymSpellBuilder, Verbosity};

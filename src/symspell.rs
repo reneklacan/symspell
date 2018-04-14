@@ -11,7 +11,7 @@ use unidecode::unidecode;
 
 use edit_distance::{DistanceAlgorithm, EditDistance};
 use string_strategy::{StringStrategy};
-use suggest_item::SuggestItem;
+use suggestion::Suggestion;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Verbosity {
@@ -114,12 +114,12 @@ impl<T: StringStrategy> SymSpell<T> {
         input: &str,
         verbosity: Verbosity,
         max_edit_distance: i64,
-    ) -> Vec<SuggestItem> {
+    ) -> Vec<Suggestion> {
         if max_edit_distance > self.max_dictionary_edit_distance {
             panic!("max_edit_distance is bigger than max_dictionary_edit_distance");
         }
 
-        let mut suggestions: Vec<SuggestItem> = Vec::new();
+        let mut suggestions: Vec<Suggestion> = Vec::new();
 
         let input = &unidecode(input);
         let input_len = self.string_strategy.len(input) as i64;
@@ -133,7 +133,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
         if self.words.contains_key(input) {
             let suggestion_count = self.words[input];
-            suggestions.push(SuggestItem::new(input, 0, suggestion_count));
+            suggestions.push(Suggestion::new(input, 0, suggestion_count));
 
             if verbosity != Verbosity::All {
                 return suggestions;
@@ -254,7 +254,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     if distance <= max_edit_distance2 {
                         let suggestion_count = self.words[suggestion];
-                        let si = SuggestItem::new(suggestion, distance, suggestion_count);
+                        let si = Suggestion::new(suggestion, distance, suggestion_count);
 
                         if suggestions.len() > 0 {
                             match verbosity {
@@ -323,13 +323,13 @@ impl<T: StringStrategy> SymSpell<T> {
     /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
     /// symspell.lookup_compound("whereis th elove", 2)
     /// ```
-    pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<SuggestItem> {
+    pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<Suggestion> {
         //parse input string into single terms
         let term_list1 = self.parse_words(&self.string_strategy.prepare(input));
 
-        // let mut suggestions_previous_term: Vec<SuggestItem> = Vec::new();                  //suggestions for a single term
-        let mut suggestions: Vec<SuggestItem>;
-        let mut suggestion_parts: Vec<SuggestItem> = Vec::new();
+        // let mut suggestions_previous_term: Vec<Suggestion> = Vec::new();                  //suggestions for a single term
+        let mut suggestions: Vec<Suggestion>;
+        let mut suggestion_parts: Vec<Suggestion> = Vec::new();
         let distance_comparer = EditDistance::new(self.distance_algorithm.clone());
 
         //translate every term to its best suggestion, otherwise it remains unchanged
@@ -340,7 +340,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
             //combi check, always before split
             if i > 0 && !last_combi {
-                let mut suggestions_combi: Vec<SuggestItem> = self.lookup(
+                let mut suggestions_combi: Vec<Suggestion> = self.lookup(
                     &format!("{}{}", term_list1[i - 1], term_list1[i]),
                     Verbosity::Top,
                     edit_distance_max,
@@ -348,7 +348,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
                 if suggestions_combi.len() > 0 {
                     let best1 = suggestion_parts[suggestion_parts.len() - 1].clone();
-                    let mut best2 = SuggestItem::empty();
+                    let mut best2 = Suggestion::empty();
 
                     if suggestions.len() > 0 {
                         best2 = suggestions[0].clone();
@@ -384,7 +384,7 @@ impl<T: StringStrategy> SymSpell<T> {
                 suggestion_parts.push(suggestions[0].clone());
             } else {
                 //if no perfect suggestion, split word into pairs
-                let mut suggestions_split: Vec<SuggestItem> = Vec::new();
+                let mut suggestions_split: Vec<Suggestion> = Vec::new();
 
                 //add original term
                 if suggestions.len() > 0 {
@@ -398,7 +398,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         let part1 = self.string_strategy.slice(&term_list1[i], 0, j);
                         let part2 = self.string_strategy.slice(&term_list1[i], j, term_length);
 
-                        let mut suggestion_split = SuggestItem::empty();
+                        let mut suggestion_split = Suggestion::empty();
 
                         let suggestions1 = self.lookup(&part1, Verbosity::Top, edit_distance_max);
 
@@ -455,14 +455,14 @@ impl<T: StringStrategy> SymSpell<T> {
                         });
                         suggestion_parts.push(suggestions_split[0].clone());
                     } else {
-                        let mut si = SuggestItem::empty();
+                        let mut si = Suggestion::empty();
                         si.term = term_list1[i].clone();
                         si.count = 0;
                         si.distance = edit_distance_max + 1;
                         suggestion_parts.push(si);
                     }
                 } else {
-                    let mut si = SuggestItem::empty();
+                    let mut si = Suggestion::empty();
                     si.term = term_list1[i].clone();
                     si.count = 0;
                     si.distance = edit_distance_max + 1;
@@ -471,7 +471,7 @@ impl<T: StringStrategy> SymSpell<T> {
             }
         }
 
-        let mut suggestion = SuggestItem::empty();
+        let mut suggestion = Suggestion::empty();
 
         suggestion.count = i64::MAX;
 
