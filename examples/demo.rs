@@ -1,16 +1,10 @@
 #![feature(duration_extras)]
-
 extern crate symspell;
 
+use std::time::Instant;
 use symspell::{AsciiStringStrategy, SymSpell, Verbosity};
 
 fn main() {
-    main_en();
-    // main_sk();
-}
-
-#[allow(dead_code)]
-fn main_en() {
     let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
 
     measure("load_dictionary", || {
@@ -32,32 +26,6 @@ fn main_en() {
         println!("{:?}", result);
     });
 }
-
-#[allow(dead_code)]
-fn main_sk() {
-    let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
-
-    measure("load_dictionary", || {
-        symspell.load_dictionary(
-            "new_fdb.txt",
-            0,
-            1,
-            "\t",
-        );
-    });
-
-    measure("lookup", || {
-        let result = symspell.lookup("aleko", Verbosity::All, 2);
-        println!("{:?}", result);
-    });
-
-    measure("lookup_compound", || {
-        let result = symspell.lookup_compound("pekníchlapi", 2);
-        println!("{:?}", result);
-    });
-}
-
-use std::time::Instant;
 
 pub fn measure<F>(name: &str, mut f: F)
 where
