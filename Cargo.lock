@@ -29,7 +29,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "symspell"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
  "derive_builder 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "strsim 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
