@@ -18,8 +18,6 @@ println!("{:?}", compound_suggestions);
 ```
 */
 
-#![feature(duration_extras)]
-
 extern crate strsim;
 #[macro_use]
 extern crate derive_builder;
