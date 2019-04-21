@@ -15,6 +15,6 @@ exclude = [
 strsim = "^0.7"
 unidecode = "^0.3"
 derive_builder = "^0.5"
+rayon = "*" # don't commit me!!!
 
-[[example]]
-name = "demo"
+[dev-dependencies]

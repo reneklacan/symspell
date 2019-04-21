@@ -10,7 +10,7 @@ use std::path::Path;
 use unidecode::unidecode;
 
 use edit_distance::{DistanceAlgorithm, EditDistance};
-use string_strategy::{StringStrategy};
+use string_strategy::StringStrategy;
 use suggestion::Suggestion;
 
 #[derive(Eq, PartialEq, Debug)]
@@ -52,9 +52,9 @@ impl<T: StringStrategy> Default for SymSpell<T> {
 
 impl<T: StringStrategy> SymSpell<T> {
     /// Load multiple dictionary entries from a file of word/frequency count pairs.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `corpus` - The path+filename of the file.
     /// * `term_index` - The column position of the word.
     /// * `count_index` - The column position of the frequency count.
@@ -82,7 +82,8 @@ impl<T: StringStrategy> SymSpell<T> {
 
             if line_parts.len() >= 2 {
                 // let key = unidecode(line_parts[term_index as usize]);
-                let key = self.string_strategy
+                let key = self
+                    .string_strategy
                     .prepare(line_parts[term_index as usize]);
                 let count = line_parts[count_index as usize].parse::<i64>().unwrap();
 
@@ -95,15 +96,15 @@ impl<T: StringStrategy> SymSpell<T> {
 
     /// Find suggested spellings for a given input word, using the maximum
     /// edit distance specified during construction of the SymSpell dictionary.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `input` - The word being spell checked.
     /// * `verbosity` - The value controlling the quantity/closeness of the retuned suggestions.
     /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
     /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
@@ -236,7 +237,8 @@ impl<T: StringStrategy> SymSpell<T> {
                                 candidate_len,
                                 suggestion,
                                 suggestion_len,
-                            ) {
+                            )
+                        {
                             continue;
                         }
 
@@ -310,14 +312,14 @@ impl<T: StringStrategy> SymSpell<T> {
 
     /// Find suggested spellings for a given input sentence, using the maximum
     /// edit distance specified during construction of the SymSpell dictionary.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `input` - The sentence being spell checked.
     /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
     /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
@@ -520,7 +522,6 @@ impl<T: StringStrategy> SymSpell<T> {
         true
     }
 
-
     fn create_dictionary_entry(&mut self, key: String, count: i64) -> bool {
         if count < self.count_threshold {
             return false;
@@ -560,7 +561,8 @@ impl<T: StringStrategy> SymSpell<T> {
         }
 
         if key_len > self.prefix_length {
-            let shortened_key = self.string_strategy
+            let shortened_key = self
+                .string_strategy
                 .slice(key, 0, self.prefix_length as usize);
             hash_set.insert(shortened_key.clone());
             self.edits(&shortened_key, 0, &mut hash_set);
@@ -604,20 +606,26 @@ impl<T: StringStrategy> SymSpell<T> {
 
         (self.prefix_length - max_edit_distance == candidate_len)
             && (((min - self.prefix_length) > 1)
-                && (self.string_strategy
+                && (self
+                    .string_strategy
                     .suffix(input, (input_len + 1 - min) as usize)
-                    != self.string_strategy
+                    != self
+                        .string_strategy
                         .suffix(suggestion, (suggestion_len + 1 - min) as usize)))
             || ((min > 0)
                 && (self.string_strategy.at(input, (input_len - min) as isize)
-                    != self.string_strategy
+                    != self
+                        .string_strategy
                         .at(suggestion, (suggestion_len - min) as isize))
-                && ((self.string_strategy
+                && ((self
+                    .string_strategy
                     .at(input, (input_len - min - 1) as isize)
-                    != self.string_strategy
+                    != self
+                        .string_strategy
                         .at(suggestion, (suggestion_len - min) as isize))
                     || (self.string_strategy.at(input, (input_len - min) as isize)
-                        != self.string_strategy
+                        != self
+                            .string_strategy
                             .at(suggestion, (suggestion_len - min - 1) as isize))))
     }
 

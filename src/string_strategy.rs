@@ -39,7 +39,7 @@ impl StringStrategy for AsciiStringStrategy {
     }
 
     fn slice(&self, s: &str, start: usize, end: usize) -> String {
-        unsafe { s.slice_unchecked(start, end) }.to_string()
+        unsafe { s.get_unchecked(start..end) }.to_string()
     }
 
     fn suffix(&self, s: &str, start: usize) -> String {

@@ -1,4 +1,3 @@
-#![feature(duration_extras)]
 extern crate symspell;
 
 use std::time::Instant;
@@ -22,7 +21,10 @@ fn main() {
     });
 
     measure("lookup_compound", || {
-        let result = symspell.lookup_compound("the bigjest playrs in te strogsommer film slatew ith plety of funn", 2);
+        let result = symspell.lookup_compound(
+            "the bigjest playrs in te strogsommer film slatew ith plety of funn",
+            2,
+        );
         println!("{:?}", result);
     });
 }

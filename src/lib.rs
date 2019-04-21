@@ -1,6 +1,6 @@
 /*!
 
-Spelling correction & Fuzzy search based on Symmetric Delete spelling correction algorithm
+Spelling correction & Fuzzy search based on Symmetric Delete spelling correction algorithm.
 
 # Basic Example
 
