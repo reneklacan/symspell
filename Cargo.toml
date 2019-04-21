@@ -12,9 +12,9 @@ exclude = [
 ]
 
 [dependencies]
-strsim = "^0.7"
+strsim = "^0.9"
 unidecode = "^0.3"
-derive_builder = "^0.5"
+derive_builder = "^0.7"
 rayon = "*" # don't commit me!!!
 
 [dev-dependencies]
