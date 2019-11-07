@@ -61,10 +61,15 @@ let mut unicode_symspell: SymSpell<UnicodeiStringStrategy> = SymSpell::default()
 This crate can be compiled against wasm32 target and exposes a SymSpell Class that can be used from Javascript as follow.
 
 ```javascript
+const fs = require('fs');
 const rust = require('./pkg');
-let spell_checker = new rust.SymSpell({ is_ascii: false, max_edit_distance: 2,  prefix_length: 7,  count_threshold: 1});
-speller.load_dictionary(arraybuffer, { term_index: 0,  count_index: 1, separator: " "});
-speller.lookup_compound(sentence, 1);
+
+let dictionary = fs.readFileSync('data/frequency_dictionary_en_82_765.txt');
+let sentence = "whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him";
+
+let symspell = new rust.SymSpell({ is_ascii: false, max_edit_distance: 2,  prefix_length: 7,  count_threshold: 1});
+symspell.load_dictionary(dictionary.buffer, { term_index: 0,  count_index: 1, separator: " "});
+symspell.lookup_compound(sentence, 1);
 ```
 
 It can be compiled using `wasm-pack` (eg. `wasm-pack build --release --target nodejs`)
