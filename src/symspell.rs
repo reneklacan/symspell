@@ -210,7 +210,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         continue;
                     }
 
-                    let mut distance;
+                    let distance;
 
                     if candidate_len == 0 {
                         distance = cmp::max(input_len, suggestion_len);
