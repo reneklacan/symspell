@@ -115,9 +115,11 @@ impl<T: StringStrategy> SymSpell<T> {
     /// # Examples
     ///
     /// ```
+    /// use symspell::{SymSpell, AsciiStringStrategy, Verbosity};
+    ///
     /// let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
     /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
-    /// symspell.lookup("whatver", Verbosity::Top, 2)
+    /// symspell.lookup("whatver", Verbosity::Top, 2);
     /// ```
     pub fn lookup(
         &self,
@@ -330,9 +332,11 @@ impl<T: StringStrategy> SymSpell<T> {
     /// # Examples
     ///
     /// ```
+    /// use symspell::{SymSpell, AsciiStringStrategy};
+    ///
     /// let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
     /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
-    /// symspell.lookup_compound("whereis th elove", 2)
+    /// symspell.lookup_compound("whereis th elove", 2);
     /// ```
     pub fn lookup_compound(&self, input: &str, edit_distance_max: i64) -> Vec<Suggestion> {
         //parse input string into single terms
