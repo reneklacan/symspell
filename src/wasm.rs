@@ -163,3 +163,36 @@ impl JSSymSpell {
             .collect())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
+
+    #[wasm_bindgen_test]
+    fn test_sentence() {
+        let init_args = InitParams {
+            is_ascii: false,
+            max_edit_distance: 2,
+            prefix_length: 7,
+            count_threshold: 1,
+        };
+        let mut speller = JSSymSpell::new(&JsValue::from_serde(&init_args).unwrap()).unwrap();
+        let sentence = "wher";
+        let dict = "where 360468339\ninfo 352363058".as_bytes();
+        let expected = "where";
+
+        let dict_args = DictParams {
+            term_index: 0,
+            count_index: 1,
+            separator: String::from(" "),
+        };
+        speller
+            .load_dictionary(dict, &JsValue::from_serde(&dict_args).unwrap())
+            .unwrap();
+        let result: JSSuggestion = speller.lookup_compound(sentence, 1).unwrap()[0]
+            .into_serde()
+            .unwrap();
+        assert_eq!(result.term, expected);
+    }
+}

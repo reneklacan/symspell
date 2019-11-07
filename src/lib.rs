@@ -28,6 +28,9 @@ extern crate wasm_bindgen;
 #[cfg(target_arch = "wasm32")]
 #[macro_use]
 extern crate serde_derive;
+#[cfg(target_arch = "wasm32")]
+#[cfg(test)]
+extern crate wasm_bindgen_test;
 
 mod edit_distance;
 mod string_strategy;
