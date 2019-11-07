@@ -11,9 +11,21 @@ exclude = [
     "data/*",
 ]
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
 [dependencies]
 strsim = "^0.9"
 unidecode = "^0.3"
 derive_builder = "^0.7"
+
+[target.wasm32-unknown-unknown.dependencies]
+serde = "^1.0.59"
+serde_derive = "^1.0.59"
+wasm-bindgen = { version = "^0.2", features = ["serde-serialize"]}
+
+[target.wasm32-unknown-unknown.dev-dependencies]
+wasm-bindgen-test = "^0.2"
 
 [dev-dependencies]

@@ -78,19 +78,28 @@ impl<T: StringStrategy> SymSpell<T> {
                 println!("progress: {}", i);
             }
             let line_str = line.unwrap();
-            let line_parts: Vec<&str> = line_str.split(separator).collect();
-
-            if line_parts.len() >= 2 {
-                // let key = unidecode(line_parts[term_index as usize]);
-                let key = self
-                    .string_strategy
-                    .prepare(line_parts[term_index as usize]);
-                let count = line_parts[count_index as usize].parse::<i64>().unwrap();
-
-                self.create_dictionary_entry(key, count);
-            }
+            self.load_dictionary_line(&line_str, term_index, count_index, separator);
         }
+        true
+    }
 
+    pub fn load_dictionary_line(
+        &mut self,
+        line: &str,
+        term_index: i64,
+        count_index: i64,
+        separator: &str,
+    ) -> bool {
+        let line_parts: Vec<&str> = line.split(separator).collect();
+        if line_parts.len() >= 2 {
+            // let key = unidecode(line_parts[term_index as usize]);
+            let key = self
+                .string_strategy
+                .prepare(line_parts[term_index as usize]);
+            let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+
+            self.create_dictionary_entry(key, count);
+        }
         true
     }
 

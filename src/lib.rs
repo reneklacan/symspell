@@ -23,11 +23,25 @@ extern crate strsim;
 extern crate derive_builder;
 extern crate unidecode;
 
+#[cfg(target_arch = "wasm32")]
+extern crate wasm_bindgen;
+#[cfg(target_arch = "wasm32")]
+#[macro_use]
+extern crate serde_derive;
+#[cfg(target_arch = "wasm32")]
+#[cfg(test)]
+extern crate wasm_bindgen_test;
+
 mod edit_distance;
 mod string_strategy;
 mod suggestion;
 mod symspell;
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 
 pub use string_strategy::{AsciiStringStrategy, StringStrategy, UnicodeiStringStrategy};
 pub use suggestion::Suggestion;
 pub use symspell::{SymSpell, SymSpellBuilder, Verbosity};
+
+#[cfg(target_arch = "wasm32")]
+pub use wasm::JSSymSpell;

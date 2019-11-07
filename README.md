@@ -55,3 +55,16 @@ To configure string strategy just pass it as a type parameter:
 let mut ascii_symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
 let mut unicode_symspell: SymSpell<UnicodeiStringStrategy> = SymSpell::default();
 ```
+
+### Javascript Bindings
+
+This crate can be compiled against wasm32 target and exposes a SymSpell Class that can be used from Javascript as follow.
+
+```javascript
+const rust = require('./pkg');
+let spell_checker = new rust.SymSpell({ is_ascii: false, max_edit_distance: 2,  prefix_length: 7,  count_threshold: 1});
+speller.load_dictionary(arraybuffer, { term_index: 0,  count_index: 1, separator: " "});
+speller.lookup_compound(sentence, 1);
+```
+
+It can be compiled using `wasm-pack` (eg. `wasm-pack build --release --target nodejs`)
