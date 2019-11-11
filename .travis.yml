@@ -1,0 +1,13 @@
+language: rust
+rust    : stable
+
+addons:
+  firefox: latest
+
+install:
+  - curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+script:
+  - cargo test
+  - wasm-pack test --firefox --headless
+
