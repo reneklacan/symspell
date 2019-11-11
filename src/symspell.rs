@@ -628,7 +628,14 @@ impl<T: StringStrategy> SymSpell<T> {
         suggestion: &str,
         suggestion_len: i64,
     ) -> bool {
-        let min = cmp::min(input_len, suggestion_len) as i64 - self.prefix_length;
+        // handles the shortcircuit of min_distance
+        // assignment when first boolean expression
+        // evaluates to false
+        let min = if self.prefix_length - max_edit_distance == candidate_len {
+            cmp::min(input_len, suggestion_len) - self.prefix_length
+        } else {
+            0
+        };
 
         (self.prefix_length - max_edit_distance == candidate_len)
             && (((min - self.prefix_length) > 1)
