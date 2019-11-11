@@ -540,7 +540,20 @@ impl<T: StringStrategy> SymSpell<T> {
             return false;
         }
 
-        self.words.insert(key.clone(), count);
+        match self.words.get(&key) {
+            Some(i) => {
+                let updated_count = if i64::MAX - i > count {
+                    i + count
+                } else {
+                    i64::MAX
+                };
+                self.words.insert(key.clone(), updated_count);
+                return false;
+            }
+            None => {
+                self.words.insert(key.clone(), count);
+            }
+        }
 
         let key_len = self.string_strategy.len(&key);
 
