@@ -25,6 +25,8 @@ fn main() {
 }
 ```
 
+N.B. the dictionary entries have to be lowercase
+
 ## Advanced Usage
 
 ### Using Custom Settings
