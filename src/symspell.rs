@@ -7,7 +7,6 @@ use std::hash::{Hash, Hasher};
 use std::i64;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use unidecode::unidecode;
 
 use edit_distance::{DistanceAlgorithm, EditDistance};
 use string_strategy::StringStrategy;
@@ -133,7 +132,8 @@ impl<T: StringStrategy> SymSpell<T> {
 
         let mut suggestions: Vec<Suggestion> = Vec::new();
 
-        let input = &unidecode(input);
+        let prep_input = self.string_strategy.prepare(input);
+        let input = prep_input.as_str();
         let input_len = self.string_strategy.len(input) as i64;
 
         if input_len - self.max_dictionary_edit_distance > self.max_length {
