@@ -19,6 +19,14 @@ pub enum Verbosity {
     All,
 }
 
+// number of all words in the corpus used to generate the
+//// frequency dictionary. This is used to calculate the word
+//// occurrence probability p from word counts c : p=c/N. N equals
+//// the sum of all counts c in the dictionary only if the
+//// dictionary is complete, but not if the dictionary is
+//// truncated or filtered
+static N: i64 = 1024908267229;
+
 #[derive(Builder, PartialEq)]
 pub struct SymSpell<T: StringStrategy> {
     /// Maximum edit distance for doing lookups.
@@ -370,16 +378,17 @@ impl<T: StringStrategy> SymSpell<T> {
                     } else {
                         best2.term = term_list1[i].clone();
                         best2.distance = edit_distance_max + 1;
-                        best2.count = 0;
+                        best2.count =
+                            10 / (10i64).pow(self.string_strategy.len(&term_list1[i]) as u32);
                     }
                     //if (suggestions_combi[0].distance + 1 < DamerauLevenshteinDistance(term_list1[i - 1] + " " + term_list1[i], best1.term + " " + best2.term))
-                    let distance1 = distance_comparer.compare(
-                        &format!("{} {}", term_list1[i - 1], term_list1[i]),
-                        &format!("{} {}", best1.term, best2.term),
-                        edit_distance_max,
-                    );
+                    let distance1 = best1.distance + best2.distance;
 
-                    if (distance1 >= 0) && (suggestions_combi[0].distance + 1 < distance1) {
+                    if (distance1 >= 0)
+                        && (suggestions_combi[0].distance + 1 < distance1
+                            || (suggestions_combi[0].distance + 1 == distance1
+                                && (suggestions_combi[0].count > best1.count / N * best2.count)))
+                    {
                         suggestions_combi[0].distance += 1;
                         let last_i = suggestion_parts.len() - 1;
                         suggestion_parts[last_i] = suggestions_combi[0].clone();
@@ -399,11 +408,11 @@ impl<T: StringStrategy> SymSpell<T> {
                 suggestion_parts.push(suggestions[0].clone());
             } else {
                 //if no perfect suggestion, split word into pairs
-                let mut suggestions_split: Vec<Suggestion> = Vec::new();
+                let mut suggestion_split_best = Suggestion::empty();
 
                 //add original term
                 if suggestions.len() > 0 {
-                    suggestions_split.push(suggestions[0].clone());
+                    suggestion_split_best = suggestions[0].clone();
                 }
 
                 let term_length = self.string_strategy.len(&term_list1[i]);
@@ -418,22 +427,10 @@ impl<T: StringStrategy> SymSpell<T> {
                         let suggestions1 = self.lookup(&part1, Verbosity::Top, edit_distance_max);
 
                         if suggestions1.len() > 0 {
-                            if (suggestions.len() > 0)
-                                && (suggestions[0].term == suggestions1[0].term)
-                            {
-                                break;
-                            } //if split correction1 == einzelwort correction
-
                             let suggestions2 =
                                 self.lookup(&part2, Verbosity::Top, edit_distance_max);
 
                             if suggestions2.len() > 0 {
-                                if (suggestions.len() > 0)
-                                    && (suggestions[0].term == suggestions2[0].term)
-                                {
-                                    break;
-                                } //if split correction1 == einzelwort correction
-
                                 //select best suggestion for split pair
                                 suggestion_split.term =
                                     format!("{} {}", suggestions1[0].term, suggestions2[0].term);
@@ -448,38 +445,62 @@ impl<T: StringStrategy> SymSpell<T> {
                                     distance2 = edit_distance_max + 1;
                                 }
 
+                                if suggestion_split_best.term != "" {
+                                    if distance2 > suggestion_split_best.distance {
+                                        continue;
+                                    }
+                                    if distance2 < suggestion_split_best.distance {
+                                        suggestion_split_best = Suggestion::empty();
+                                    }
+                                }
+
+                                // The Naive Bayes probability of
+                                // the word combination is the
+                                // product of the two word
+                                // probabilities: P(AB)=P(A)*P(B)
+                                // use it to estimate the frequency
+                                // count of the combination, which
+                                // then is used to rank/select the
+                                // best splitting variant
+                                let count2: i64 = cmp::min(
+                                    i64::MAX,
+                                    ((suggestions1[0].count as f64) / (N as f64)
+                                        * (suggestions2[0].count as f64))
+                                        as i64,
+                                );
                                 suggestion_split.distance = distance2;
-                                suggestion_split.count =
-                                    cmp::min(suggestions1[0].count, suggestions2[0].count);
-                                suggestions_split.push(suggestion_split.clone());
+                                suggestion_split.count = count2;
 
                                 //early termination of split
-                                if suggestion_split.distance == 1 {
-                                    break;
+                                if suggestion_split_best.term == ""
+                                    || suggestion_split.count > suggestion_split_best.count
+                                {
+                                    suggestion_split_best = suggestion_split.clone();
                                 }
                             }
                         }
                     }
 
-                    if suggestions_split.len() > 0 {
+                    if suggestion_split_best.term != "" {
                         //select best suggestion for split pair
-                        suggestions_split.sort_by(|x, y| {
-                            x.distance
-                                .cmp(&y.distance)
-                                .then(x.count.cmp(&y.count).reverse())
-                        });
-                        suggestion_parts.push(suggestions_split[0].clone());
+                        suggestion_parts.push(suggestion_split_best.clone());
                     } else {
                         let mut si = Suggestion::empty();
+                        let si_count: f64 = 10f64
+                            / ((10i64).pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
+
                         si.term = term_list1[i].clone();
-                        si.count = 0;
+                        si.count = si_count as i64;
                         si.distance = edit_distance_max + 1;
                         suggestion_parts.push(si);
                     }
                 } else {
                     let mut si = Suggestion::empty();
+                    let si_count: f64 = 10f64
+                        / ((10i64).pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
+
                     si.term = term_list1[i].clone();
-                    si.count = 0;
+                    si.count = si_count as i64;
                     si.distance = edit_distance_max + 1;
                     suggestion_parts.push(si);
                 }
@@ -488,18 +509,18 @@ impl<T: StringStrategy> SymSpell<T> {
 
         let mut suggestion = Suggestion::empty();
 
-        suggestion.count = i64::MAX;
+        let mut tmp_count: f64 = N as f64;
 
         let mut s = "".to_string();
-
         for si in suggestion_parts {
             s.push_str(&si.term);
             s.push_str(" ");
-            suggestion.count = cmp::min(suggestion.count, si.count);
+            tmp_count *= si.count as f64 / N as f64;
         }
 
         suggestion.term = s.trim().to_string();
-        suggestion.distance = distance_comparer.compare(input, &suggestion.term, i64::MAX);
+        suggestion.count = tmp_count as i64;
+        suggestion.distance = distance_comparer.compare(input, &suggestion.term, 2i64.pow(31) - 1);
 
         vec![suggestion]
     }
