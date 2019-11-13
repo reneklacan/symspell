@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 strsim = "^0.9"
 unidecode = "^0.3"
-derive_builder = "^0.7"
+derive_builder = "^0.9"
 
 [target.wasm32-unknown-unknown.dependencies]
 serde = "^1.0.59"
