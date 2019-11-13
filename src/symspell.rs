@@ -25,7 +25,7 @@ pub enum Verbosity {
 //// the sum of all counts c in the dictionary only if the
 //// dictionary is complete, but not if the dictionary is
 //// truncated or filtered
-static N: i64 = 1024908267229;
+static N: i64 = 1_024_908_267_229;
 
 #[derive(Builder, PartialEq)]
 pub struct SymSpell<T: StringStrategy> {
@@ -277,7 +277,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         let suggestion_count = self.words[suggestion];
                         let si = Suggestion::new(suggestion, distance, suggestion_count);
 
-                        if suggestions.len() > 0 {
+                        if !suggestions.is_empty() {
                             match verbosity {
                                 Verbosity::Closest => {
                                     if distance < max_edit_distance2 {
@@ -369,18 +369,18 @@ impl<T: StringStrategy> SymSpell<T> {
                     edit_distance_max,
                 );
 
-                if suggestions_combi.len() > 0 {
+                if !suggestions_combi.is_empty() {
                     let best1 = suggestion_parts[suggestion_parts.len() - 1].clone();
-                    let mut best2 = Suggestion::empty();
-
-                    if suggestions.len() > 0 {
-                        best2 = suggestions[0].clone();
+                    let best2 = if !suggestions.is_empty() {
+                        suggestions[0].clone()
                     } else {
-                        best2.term = term_list1[i].clone();
-                        best2.distance = edit_distance_max + 1;
-                        best2.count =
-                            10 / (10i64).pow(self.string_strategy.len(&term_list1[i]) as u32);
-                    }
+                        Suggestion::new(
+                            term_list1[1].as_str(),
+                            edit_distance_max + 1,
+                            10 / (10i64).pow(self.string_strategy.len(&term_list1[i]) as u32),
+                        )
+                    };
+
                     //if (suggestions_combi[0].distance + 1 < DamerauLevenshteinDistance(term_list1[i - 1] + " " + term_list1[i], best1.term + " " + best2.term))
                     let distance1 = best1.distance + best2.distance;
 
@@ -400,20 +400,20 @@ impl<T: StringStrategy> SymSpell<T> {
             last_combi = false;
 
             //alway split terms without suggestion / never split terms with suggestion ed=0 / never split single char terms
-            if (suggestions.len() > 0)
+            if !suggestions.is_empty()
                 && ((suggestions[0].distance == 0)
                     || (self.string_strategy.len(&term_list1[i]) == 1))
             {
                 //choose best suggestion
                 suggestion_parts.push(suggestions[0].clone());
             } else {
-                //if no perfect suggestion, split word into pairs
-                let mut suggestion_split_best = Suggestion::empty();
-
-                //add original term
-                if suggestions.len() > 0 {
-                    suggestion_split_best = suggestions[0].clone();
-                }
+                let mut suggestion_split_best = if !suggestions.is_empty() {
+                    //add original term
+                    suggestions[0].clone()
+                } else {
+                    //if no perfect suggestion, split word into pairs
+                    Suggestion::empty()
+                };
 
                 let term_length = self.string_strategy.len(&term_list1[i]);
 
@@ -426,11 +426,11 @@ impl<T: StringStrategy> SymSpell<T> {
 
                         let suggestions1 = self.lookup(&part1, Verbosity::Top, edit_distance_max);
 
-                        if suggestions1.len() > 0 {
+                        if !suggestions1.is_empty() {
                             let suggestions2 =
                                 self.lookup(&part2, Verbosity::Top, edit_distance_max);
 
-                            if suggestions2.len() > 0 {
+                            if !suggestions2.is_empty() {
                                 //select best suggestion for split pair
                                 suggestion_split.term =
                                     format!("{} {}", suggestions1[0].term, suggestions2[0].term);
@@ -587,12 +587,10 @@ impl<T: StringStrategy> SymSpell<T> {
         for delete in edits {
             let delete_hash = self.get_string_hash(&delete);
 
-            if self.deletes.contains_key(&delete_hash) {
-                let suggestions = self.deletes.get_mut(&delete_hash).unwrap();
-                suggestions.push(key.clone());
-            } else {
-                self.deletes.insert(delete_hash, vec![key.to_string()]);
-            }
+            self.deletes
+                .entry(delete_hash)
+                .and_modify(|e| e.push(key.clone()))
+                .or_insert_with(|| vec![key.to_string()]);
         }
 
         true
@@ -683,7 +681,7 @@ impl<T: StringStrategy> SymSpell<T> {
                             .at(suggestion, (suggestion_len - min - 1) as isize))))
     }
 
-    fn get_string_hash(&self, s: &String) -> u64 {
+    fn get_string_hash(&self, s: &str) -> u64 {
         let mut hasher = DefaultHasher::new();
         s.hash(&mut hasher);
         hasher.finish()

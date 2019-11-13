@@ -98,7 +98,7 @@ impl StringStrategy for UnicodeiStringStrategy {
             return None;
         }
 
-        s.chars().skip(i as usize).next()
+        s.chars().nth(i as usize)
     }
 }
 

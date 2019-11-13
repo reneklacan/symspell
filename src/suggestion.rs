@@ -18,8 +18,8 @@ impl Suggestion {
     pub fn new(term: &str, distance: i64, count: i64) -> Suggestion {
         Suggestion {
             term: term.to_string(),
-            distance: distance,
-            count: count,
+            distance,
+            count,
         }
     }
 }
