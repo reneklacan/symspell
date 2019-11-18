@@ -45,7 +45,7 @@ mod wasm;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use string_strategy::AsciiStringStrategy;
-pub use string_strategy::{StringStrategy, UnicodeiStringStrategy};
+pub use string_strategy::{StringStrategy, UnicodeStringStrategy, UnicodeiStringStrategy};
 pub use suggestion::Suggestion;
 pub use symspell::{SymSpell, SymSpellBuilder, Verbosity};
 

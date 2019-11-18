@@ -45,7 +45,7 @@ let mut symspell: SymSpell<AsciiStringStrategy> = SymSpellBuilder::default()
 String strategy is abstraction for string manipulation, for example preprocessing.
 
 There are two strategies included:
-* `UnicodeiStringStrategy`
+* `UnicodeStringStrategy`
     * Doesn't do any prepocessing and handles strings as they are.
 * `AsciiStringStrategy`
     * Transliterates strings into ASCII only characters.
@@ -55,13 +55,13 @@ To configure string strategy just pass it as a type parameter:
 
 ```rust
 let mut ascii_symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
-let mut unicode_symspell: SymSpell<UnicodeiStringStrategy> = SymSpell::default();
+let mut unicode_symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
 ```
 
 ### Javascript Bindings
 
 This crate can be compiled against wasm32 target and exposes a SymSpell Class that can be used from Javascript as follow.
-Only `UnicodeiStringStrategy` is exported, meaning that if someone wants to manipulate ASCII only strings the dictionary and the sentences must be prepared in advance from JS.
+Only `UnicodeStringStrategy` is exported, meaning that if someone wants to manipulate ASCII only strings the dictionary and the sentences must be prepared in advance from JS.
 
 ```javascript
 const fs = require('fs');

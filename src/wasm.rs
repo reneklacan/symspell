@@ -1,5 +1,5 @@
 use std::str;
-use string_strategy::UnicodeiStringStrategy;
+use string_strategy::UnicodeStringStrategy;
 use symspell::{SymSpell, SymSpellBuilder, Verbosity};
 use wasm_bindgen::prelude::*;
 
@@ -26,7 +26,7 @@ pub struct DictParams {
 
 #[wasm_bindgen(js_name = SymSpell)]
 pub struct JSSymSpell {
-    symspell: SymSpell<UnicodeiStringStrategy>,
+    symspell: SymSpell<UnicodeStringStrategy>,
 }
 
 #[wasm_bindgen(js_class = SymSpell)]

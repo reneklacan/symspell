@@ -59,16 +59,21 @@ impl StringStrategy for AsciiStringStrategy {
     }
 }
 
-#[derive(Clone)]
-pub struct UnicodeiStringStrategy {}
 
-impl Default for UnicodeiStringStrategy {
-    fn default() -> UnicodeiStringStrategy {
-        UnicodeiStringStrategy {}
+
+// backward compatibility on typo
+pub type UnicodeiStringStrategy = UnicodeStringStrategy;
+
+#[derive(Clone)]
+pub struct UnicodeStringStrategy {}
+
+impl Default for UnicodeStringStrategy {
+    fn default() -> UnicodeStringStrategy {
+        UnicodeStringStrategy {}
     }
 }
 
-impl StringStrategy for UnicodeiStringStrategy {
+impl StringStrategy for UnicodeStringStrategy {
     fn new() -> Self {
         Self {}
     }
@@ -144,5 +149,10 @@ mod tests {
     #[test]
     fn ascii_at_over_limit() {
         assert_eq!(AsciiStringStrategy::new().at("daleko", 6), None);
+    }
+
+    #[test]
+    fn unicodei_strategy() {
+        assert_eq!(UnicodeiStringStrategy::new().prepare("ciccio"), "ciccio");
     }
 }
