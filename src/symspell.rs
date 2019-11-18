@@ -698,12 +698,12 @@ impl<T: StringStrategy> SymSpell<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use string_strategy::UnicodeiStringStrategy;
+    use string_strategy::UnicodeStringStrategy;
 
     #[test]
     fn test_lookup_compound() {
         let edit_distance_max = 2;
-        let mut sym_spell = SymSpell::<UnicodeiStringStrategy>::default();
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
         sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
 
         let typo = "whereis th elove";

@@ -1,10 +1,10 @@
 extern crate symspell;
 
 use std::time::Instant;
-use symspell::{SymSpell, UnicodeiStringStrategy, Verbosity};
+use symspell::{SymSpell, UnicodeStringStrategy, Verbosity};
 
 fn main() {
-    let mut symspell: SymSpell<UnicodeiStringStrategy> = SymSpell::default();
+    let mut symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
 
     measure("load_dictionary", || {
         symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
