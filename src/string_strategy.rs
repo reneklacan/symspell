@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use unidecode::unidecode;
 
 pub trait StringStrategy: Clone + Default {
@@ -10,15 +11,18 @@ pub trait StringStrategy: Clone + Default {
     fn at(&self, s: &str, i: isize) -> Option<char>;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
 pub struct AsciiStringStrategy {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for AsciiStringStrategy {
     fn default() -> AsciiStringStrategy {
         AsciiStringStrategy {}
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl StringStrategy for AsciiStringStrategy {
     fn new() -> Self {
         Self {}
@@ -102,6 +106,7 @@ impl StringStrategy for UnicodeiStringStrategy {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(test)]
 mod tests {
     use super::*;
