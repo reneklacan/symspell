@@ -23,6 +23,8 @@ println!("{:?}", compound_suggestions);
 extern crate strsim;
 #[macro_use]
 extern crate derive_builder;
+
+#[cfg(not(target_arch = "wasm32"))]
 extern crate unidecode;
 
 #[cfg(target_arch = "wasm32")]
@@ -41,7 +43,9 @@ mod symspell;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-pub use string_strategy::{AsciiStringStrategy, StringStrategy, UnicodeiStringStrategy};
+#[cfg(not(target_arch = "wasm32"))]
+pub use string_strategy::AsciiStringStrategy;
+pub use string_strategy::{StringStrategy, UnicodeiStringStrategy};
 pub use suggestion::Suggestion;
 pub use symspell::{SymSpell, SymSpellBuilder, Verbosity};
 

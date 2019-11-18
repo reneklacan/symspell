@@ -17,8 +17,10 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 strsim = "^0.9"
-unidecode = "^0.3"
 derive_builder = "^0.9"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+unidecode = "^0.3"
 
 [target.wasm32-unknown-unknown.dependencies]
 serde = "^1.0.59"

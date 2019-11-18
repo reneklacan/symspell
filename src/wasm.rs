@@ -1,5 +1,5 @@
 use std::str;
-use string_strategy::{AsciiStringStrategy, UnicodeiStringStrategy};
+use string_strategy::UnicodeiStringStrategy;
 use symspell::{SymSpell, SymSpellBuilder, Verbosity};
 use wasm_bindgen::prelude::*;
 
@@ -12,7 +12,6 @@ pub struct JSSuggestion {
 
 #[derive(Serialize, Deserialize)]
 pub struct InitParams {
-    is_ascii: bool,
     max_edit_distance: i32,
     prefix_length: i32,
     count_threshold: i32,
@@ -27,12 +26,7 @@ pub struct DictParams {
 
 #[wasm_bindgen(js_name = SymSpell)]
 pub struct JSSymSpell {
-    symspell: EJSSymSpell,
-}
-
-pub enum EJSSymSpell {
-    Ascii(SymSpell<AsciiStringStrategy>),
-    Unicode(SymSpell<UnicodeiStringStrategy>),
+    symspell: SymSpell<UnicodeiStringStrategy>,
 }
 
 #[wasm_bindgen(js_class = SymSpell)]
@@ -40,7 +34,6 @@ impl JSSymSpell {
     #[wasm_bindgen(constructor)]
     pub fn new(parameters: &JsValue) -> Result<JSSymSpell, JsValue> {
         let params: InitParams;
-        let ret: JSSymSpell;
 
         if let Ok(i) = parameters.into_serde() {
             params = i;
@@ -48,28 +41,13 @@ impl JSSymSpell {
             return Err(JsValue::from("Unable to parse arguments"));
         }
 
-        if params.is_ascii {
-            ret = JSSymSpell {
-                symspell: EJSSymSpell::Ascii(
-                    SymSpellBuilder::default()
-                        .max_dictionary_edit_distance(params.max_edit_distance as i64)
-                        .prefix_length(params.prefix_length as i64)
-                        .count_threshold(params.count_threshold as i64)
-                        .build()?,
-                ),
-            };
-        } else {
-            ret = JSSymSpell {
-                symspell: EJSSymSpell::Unicode(
-                    SymSpellBuilder::default()
-                        .max_dictionary_edit_distance(params.max_edit_distance as i64)
-                        .prefix_length(params.prefix_length as i64)
-                        .count_threshold(params.count_threshold as i64)
-                        .build()?,
-                ),
-            };
-        }
-        Ok(ret)
+        Ok(JSSymSpell {
+            symspell: SymSpellBuilder::default()
+                .max_dictionary_edit_distance(params.max_edit_distance as i64)
+                .prefix_length(params.prefix_length as i64)
+                .count_threshold(params.count_threshold as i64)
+                .build()?,
+        })
     }
 
     // Expose numeric params as i32 and cast to i64 is required bc BigInt doesn'tplay well in some
@@ -90,20 +68,12 @@ impl JSSymSpell {
         }
 
         for line in corpus.lines() {
-            match self.symspell {
-                EJSSymSpell::Ascii(ref mut i) => i.load_dictionary_line(
-                    &line,
-                    params.term_index as i64,
-                    params.count_index as i64,
-                    &params.separator,
-                ),
-                EJSSymSpell::Unicode(ref mut i) => i.load_dictionary_line(
-                    &line,
-                    params.term_index as i64,
-                    params.count_index as i64,
-                    &params.separator,
-                ),
-            };
+            self.symspell.load_dictionary_line(
+                &line,
+                params.term_index as i64,
+                params.count_index as i64,
+                &params.separator,
+            );
         }
         Ok(())
     }
@@ -113,10 +83,7 @@ impl JSSymSpell {
         input: &str,
         edit_distance: i32,
     ) -> Result<Vec<JsValue>, JsValue> {
-        let res = match self.symspell {
-            EJSSymSpell::Ascii(ref i) => i.lookup_compound(input, edit_distance as i64),
-            EJSSymSpell::Unicode(ref i) => i.lookup_compound(input, edit_distance as i64),
-        };
+        let res = self.symspell.lookup_compound(input, edit_distance as i64);
         Ok(res
             .into_iter()
             .map(|sugg| {
@@ -143,12 +110,9 @@ impl JSSymSpell {
             _ => return Err(JsValue::from("Verbosity must be between 0 and 2")),
         };
 
-        let res = match self.symspell {
-            EJSSymSpell::Ascii(ref i) => i.lookup(input, sym_verbosity, max_edit_distance as i64),
-            EJSSymSpell::Unicode(ref i) => {
-                i.lookup(&input, sym_verbosity, max_edit_distance as i64)
-            }
-        };
+        let res = self
+            .symspell
+            .lookup(&input, sym_verbosity, max_edit_distance as i64);
 
         Ok(res
             .into_iter()
@@ -172,7 +136,6 @@ mod tests {
     #[wasm_bindgen_test]
     fn test_sentence() {
         let init_args = InitParams {
-            is_ascii: false,
             max_edit_distance: 2,
             prefix_length: 7,
             count_threshold: 1,
