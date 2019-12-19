@@ -19,14 +19,6 @@ pub enum Verbosity {
     All,
 }
 
-// number of all words in the corpus used to generate the
-//// frequency dictionary. This is used to calculate the word
-//// occurrence probability p from word counts c : p=c/N. N equals
-//// the sum of all counts c in the dictionary only if the
-//// dictionary is complete, but not if the dictionary is
-//// truncated or filtered
-static N: i64 = 1_024_908_267_229;
-
 #[derive(Builder, PartialEq)]
 pub struct SymSpell<T: StringStrategy> {
     /// Maximum edit distance for doing lookups.
@@ -39,12 +31,25 @@ pub struct SymSpell<T: StringStrategy> {
     #[builder(default = "1")]
     count_threshold: i64,
 
+    //// number of all words in the corpus used to generate the
+    //// frequency dictionary. This is used to calculate the word
+    //// occurrence probability p from word counts c : p=c/N. N equals
+    //// the sum of all counts c in the dictionary only if the
+    //// dictionary is complete, but not if the dictionary is
+    //// truncated or filtered
+    #[builder(default = "1_024_908_267_229", setter(skip))]
+    corpus_word_count: i64,
+
     #[builder(default = "0", setter(skip))]
     max_length: i64,
     #[builder(default = "HashMap::new()", setter(skip))]
     deletes: HashMap<u64, Vec<String>>,
     #[builder(default = "HashMap::new()", setter(skip))]
     words: HashMap<String, i64>,
+    #[builder(default = "HashMap::new()", setter(skip))]
+    bigrams: HashMap<String, i64>,
+    #[builder(default = "i64::MAX", setter(skip))]
+    bigram_min_count: i64,
     #[builder(default = "DistanceAlgorithm::Damerau")]
     distance_algorithm: DistanceAlgorithm,
     #[builder(default = "T::new()", setter(skip))]
@@ -106,6 +111,54 @@ impl<T: StringStrategy> SymSpell<T> {
             let count = line_parts[count_index as usize].parse::<i64>().unwrap();
 
             self.create_dictionary_entry(key, count);
+        }
+        true
+    }
+    /// Load multiple bigram entries from a file of bigram/frequency count pairs.
+    ///
+    /// # Arguments
+    ///
+    /// * `corpus` - The path+filename of the file.
+    /// * `term_index` - The column position of the word.
+    /// * `count_index` - The column position of the frequency count.
+    /// * `separator` - Separator between word and frequency
+    pub fn load_bigram_dictionary(
+        &mut self,
+        corpus: &str,
+        term_index: i64,
+        count_index: i64,
+        separator: &str,
+    ) -> bool {
+        if !Path::new(corpus).exists() {
+            return false;
+        }
+
+        let file = File::open(corpus).expect("file not found");
+        let sr = BufReader::new(file);
+        let line_parts_len = if separator == " " { 3 } else { 2 };
+        for (i, line) in sr.lines().enumerate() {
+            if i % 50_000 == 0 {
+                println!("progress: {}", i);
+            }
+            let line_str = line.unwrap();
+            let line_parts: Vec<&str> = line_str.split(separator).collect();
+            if line_parts.len() >= line_parts_len {
+                let key = if separator == " " {
+                    self.string_strategy.prepare(&format!(
+                        "{}{}",
+                        line_parts[term_index as usize],
+                        line_parts[(term_index + 1) as usize]
+                    ))
+                } else {
+                    self.string_strategy
+                        .prepare(line_parts[term_index as usize])
+                };
+                let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+                self.bigrams.insert(key, count);
+                if count < self.bigram_min_count {
+                    self.bigram_min_count = count;
+                }
+            }
         }
         true
     }
@@ -387,7 +440,8 @@ impl<T: StringStrategy> SymSpell<T> {
                     if (distance1 >= 0)
                         && (suggestions_combi[0].distance + 1 < distance1
                             || (suggestions_combi[0].distance + 1 == distance1
-                                && (suggestions_combi[0].count > best1.count / N * best2.count)))
+                                && (suggestions_combi[0].count
+                                    > best1.count / self.corpus_word_count * best2.count)))
                     {
                         suggestions_combi[0].distance += 1;
                         let last_i = suggestion_parts.len() - 1;
@@ -453,21 +507,64 @@ impl<T: StringStrategy> SymSpell<T> {
                                         suggestion_split_best = Suggestion::empty();
                                     }
                                 }
-
-                                // The Naive Bayes probability of
-                                // the word combination is the
-                                // product of the two word
-                                // probabilities: P(AB)=P(A)*P(B)
-                                // use it to estimate the frequency
-                                // count of the combination, which
-                                // then is used to rank/select the
-                                // best splitting variant
-                                let count2: i64 = cmp::min(
-                                    i64::MAX,
-                                    ((suggestions1[0].count as f64) / (N as f64)
-                                        * (suggestions2[0].count as f64))
-                                        as i64,
-                                );
+                                let count2: i64 = match self.bigrams.get(&suggestion_split.term) {
+                                    Some(&bigram_frequency) => {
+                                        // increase count, if split
+                                        // corrections are part of or
+                                        // identical to input single term
+                                        // correction exists
+                                        if !suggestions.is_empty() {
+                                            let best_si = &suggestions[0];
+                                            // # alternatively remove the
+                                            // # single term from
+                                            // # suggestion_split, but then
+                                            // # other splittings could win
+                                            if suggestion_split.term == term_list1[i] {
+                                                // # make count bigger than
+                                                // # count of single term
+                                                // # correction
+                                                cmp::max(bigram_frequency, best_si.count + 2)
+                                            } else if suggestions1[0].term == best_si.term
+                                                || suggestions2[0].term == best_si.term
+                                            {
+                                                // # make count bigger than
+                                                // # count of single term
+                                                // # correction
+                                                cmp::max(bigram_frequency, best_si.count + 1)
+                                            } else {
+                                                bigram_frequency
+                                            }
+                                        // no single term correction exists
+                                        } else if suggestion_split.term == term_list1[i] {
+                                            cmp::max(
+                                                bigram_frequency,
+                                                cmp::max(
+                                                    suggestions1[0].count,
+                                                    suggestions2[0].count,
+                                                ) + 2,
+                                            )
+                                        } else {
+                                            bigram_frequency
+                                        }
+                                    }
+                                    None => {
+                                        // The Naive Bayes probability of
+                                        // the word combination is the
+                                        // product of the two word
+                                        // probabilities: P(AB)=P(A)*P(B)
+                                        // use it to estimate the frequency
+                                        // count of the combination, which
+                                        // then is used to rank/select the
+                                        // best splitting variant
+                                        cmp::min(
+                                            self.bigram_min_count,
+                                            ((suggestions1[0].count as f64)
+                                                / (self.corpus_word_count as f64)
+                                                * (suggestions2[0].count as f64))
+                                                as i64,
+                                        )
+                                    }
+                                };
                                 suggestion_split.distance = distance2;
                                 suggestion_split.count = count2;
 
@@ -509,13 +606,13 @@ impl<T: StringStrategy> SymSpell<T> {
 
         let mut suggestion = Suggestion::empty();
 
-        let mut tmp_count: f64 = N as f64;
+        let mut tmp_count: f64 = self.corpus_word_count as f64;
 
         let mut s = "".to_string();
         for si in suggestion_parts {
             s.push_str(&si.term);
             s.push_str(" ");
-            tmp_count *= si.count as f64 / N as f64;
+            tmp_count *= si.count as f64 / self.corpus_word_count as f64;
         }
 
         suggestion.term = s.trim().to_string();
@@ -760,6 +857,27 @@ mod tests {
         assert_eq!(1, results.len());
         assert_eq!(correction, results[0].term);
         assert_eq!(10, results[0].distance);
+        assert_eq!(0, results[0].count);
+    }
+
+    #[test]
+    fn test_lookup_compound_with_bigrams() {
+        let edit_distance_max = 2;
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+        sym_spell.load_bigram_dictionary(
+            "./data/frequency_bigramdictionary_en_243_342.txt",
+            0,
+            2,
+            " ",
+        );
+
+        let typo = "the bigjest playrs in te strogsommer film slatew ith plety of funn";
+        let correction = "the biggest players in the strong summer film slate with plenty of fun";
+        let results = sym_spell.lookup_compound(typo, edit_distance_max);
+        assert_eq!(1, results.len());
+        assert_eq!(correction, results[0].term);
+        assert_eq!(9, results[0].distance);
         assert_eq!(0, results[0].count);
     }
 }
