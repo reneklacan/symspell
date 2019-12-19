@@ -78,6 +78,34 @@ impl JSSymSpell {
         Ok(())
     }
 
+    // Expose numeric params as i32 and cast to i64 is required bc BigInt doesn'tplay well in some
+    // browsers.
+    pub fn load_bigram_dictionary(&mut self, input: &[u8], args: &JsValue) -> Result<(), JsValue> {
+        let params: DictParams;
+        if let Ok(i) = args.into_serde() {
+            params = i;
+        } else {
+            return Err(JsValue::from("Unable to parse arguments"));
+        }
+
+        let corpus: &str;
+        if let Ok(i) = str::from_utf8(input) {
+            corpus = i;
+        } else {
+            return Err(JsValue::from("Invalid UTF-8"));
+        }
+
+        for line in corpus.lines() {
+            self.symspell.load_bigram_dictionary_line(
+                &line,
+                params.term_index as i64,
+                params.count_index as i64,
+                &params.separator,
+            );
+        }
+        Ok(())
+    }
+
     pub fn lookup_compound(
         &self,
         input: &str,
@@ -143,6 +171,7 @@ mod tests {
         let mut speller = JSSymSpell::new(&JsValue::from_serde(&init_args).unwrap()).unwrap();
         let sentence = "wher";
         let dict = "where 360468339\ninfo 352363058".as_bytes();
+        let bigram_dict = "this is 1111\nwhere is 1234".as_bytes();
         let expected = "where";
 
         let dict_args = DictParams {
@@ -152,6 +181,7 @@ mod tests {
         };
         speller
             .load_dictionary(dict, &JsValue::from_serde(&dict_args).unwrap())
+            .load_bigram_dictionary(bigram_dict, &JsValue::from_serde(&dict_args).unwrap())
             .unwrap();
         let result: JSSuggestion = speller.lookup_compound(sentence, 1).unwrap()[0]
             .into_serde()

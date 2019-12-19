@@ -132,32 +132,42 @@ impl<T: StringStrategy> SymSpell<T> {
         if !Path::new(corpus).exists() {
             return false;
         }
-
         let file = File::open(corpus).expect("file not found");
         let sr = BufReader::new(file);
-        let line_parts_len = if separator == " " { 3 } else { 2 };
         for (i, line) in sr.lines().enumerate() {
             if i % 50_000 == 0 {
                 println!("progress: {}", i);
             }
             let line_str = line.unwrap();
-            let line_parts: Vec<&str> = line_str.split(separator).collect();
-            if line_parts.len() >= line_parts_len {
-                let key = if separator == " " {
-                    self.string_strategy.prepare(&format!(
-                        "{}{}",
-                        line_parts[term_index as usize],
-                        line_parts[(term_index + 1) as usize]
-                    ))
-                } else {
-                    self.string_strategy
-                        .prepare(line_parts[term_index as usize])
-                };
-                let count = line_parts[count_index as usize].parse::<i64>().unwrap();
-                self.bigrams.insert(key, count);
-                if count < self.bigram_min_count {
-                    self.bigram_min_count = count;
-                }
+            self.load_bigram_dictionary_line(&line_str, term_index, count_index, &separator);
+        }
+        true
+    }
+
+    pub fn load_bigram_dictionary_line(
+        &mut self,
+        line: &str,
+        term_index: i64,
+        count_index: i64,
+        separator: &str,
+    ) -> bool {
+        let line_parts: Vec<&str> = line.split(separator).collect();
+        let line_parts_len = if separator == " " { 3 } else { 2 };
+        if line_parts.len() >= line_parts_len {
+            let key = if separator == " " {
+                self.string_strategy.prepare(&format!(
+                    "{}{}",
+                    line_parts[term_index as usize],
+                    line_parts[(term_index + 1) as usize]
+                ))
+            } else {
+                self.string_strategy
+                    .prepare(line_parts[term_index as usize])
+            };
+            let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+            self.bigrams.insert(key, count);
+            if count < self.bigram_min_count {
+                self.bigram_min_count = count;
             }
         }
         true
