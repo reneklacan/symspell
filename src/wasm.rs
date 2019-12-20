@@ -178,7 +178,7 @@ mod tests {
         speller
             .load_dictionary(dict, &JsValue::from_serde(&dict_args).unwrap())
             .unwrap();
-        
+
         let bigram_dict = "this is 1111\nwhere is 1234".as_bytes();
         let bigram_dict_args = DictParams {
             term_index: 0,
@@ -186,7 +186,10 @@ mod tests {
             separator: String::from(" "),
         };
         speller
-            .load_bigram_dictionary(bigram_dict, &JsValue::from_serde(&bigram_dict_args).unwrap())
+            .load_bigram_dictionary(
+                bigram_dict,
+                &JsValue::from_serde(&bigram_dict_args).unwrap(),
+            )
             .unwrap();
         let sentence = "wher";
         let expected = "where";

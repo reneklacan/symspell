@@ -59,8 +59,6 @@ impl StringStrategy for AsciiStringStrategy {
     }
 }
 
-
-
 // backward compatibility on typo
 pub type UnicodeiStringStrategy = UnicodeStringStrategy;
 

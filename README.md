@@ -15,6 +15,12 @@ fn main() {
     let mut symspell: SymSpell<AsciiStringStrategy> = SymSpell::default();
 
     symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+    symspell.load_bigram_dictionary(
+      "./data/frequency_bigramdictionary_en_243_342.txt",
+      0,
+      2,
+      " "
+    );
 
     let suggestions = symspell.lookup("roket", Verbosity::Top, 2);
     println!("{:?}", suggestions);
@@ -72,6 +78,7 @@ let sentence = "whereis th elove hehad dated forImuch of thepast who couqdn'trea
 
 let symspell = new rust.SymSpell({ max_edit_distance: 2,  prefix_length: 7,  count_threshold: 1});
 symspell.load_dictionary(dictionary.buffer, { term_index: 0,  count_index: 1, separator: " "});
+symspell.load_bigram_dictionary(bigram_dict.buffer, { term_index: 0,  count_index: 2, separator: " "});
 symspell.lookup_compound(sentence, 1);
 ```
 
