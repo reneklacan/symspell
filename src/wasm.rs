@@ -169,11 +169,7 @@ mod tests {
             count_threshold: 1,
         };
         let mut speller = JSSymSpell::new(&JsValue::from_serde(&init_args).unwrap()).unwrap();
-        let sentence = "wher";
         let dict = "where 360468339\ninfo 352363058".as_bytes();
-        let bigram_dict = "this is 1111\nwhere is 1234".as_bytes();
-        let expected = "where";
-
         let dict_args = DictParams {
             term_index: 0,
             count_index: 1,
@@ -182,9 +178,18 @@ mod tests {
         speller
             .load_dictionary(dict, &JsValue::from_serde(&dict_args).unwrap())
             .unwrap();
+        
+        let bigram_dict = "this is 1111\nwhere is 1234".as_bytes();
+        let bigram_dict_args = DictParams {
+            term_index: 0,
+            count_index: 2,
+            separator: String::from(" "),
+        };
         speller
-            .load_bigram_dictionary(bigram_dict, &JsValue::from_serde(&dict_args).unwrap())
+            .load_bigram_dictionary(bigram_dict, &JsValue::from_serde(&bigram_dict_args).unwrap())
             .unwrap();
+        let sentence = "wher";
+        let expected = "where";
         let result: JSSuggestion = speller.lookup_compound(sentence, 1).unwrap()[0]
             .into_serde()
             .unwrap();
