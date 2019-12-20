@@ -95,6 +95,14 @@ impl<T: StringStrategy> SymSpell<T> {
         true
     }
 
+    /// Load single dictionary entry from word/frequency count pair.
+    ///
+    /// # Arguments
+    ///
+    /// * `line` - word/frequency pair.
+    /// * `term_index` - The column position of the word.
+    /// * `count_index` - The column position of the frequency count.
+    /// * `separator` - Separator between word and frequency
     pub fn load_dictionary_line(
         &mut self,
         line: &str,
@@ -145,6 +153,14 @@ impl<T: StringStrategy> SymSpell<T> {
         true
     }
 
+    /// Load single dictionary entry from bigram/frequency count pair.
+    ///
+    /// # Arguments
+    ///
+    /// * `line` - bigram/frequency pair.
+    /// * `term_index` - The column position of the word.
+    /// * `count_index` - The column position of the frequency count.
+    /// * `separator` - Separator between word and frequency
     pub fn load_bigram_dictionary_line(
         &mut self,
         line: &str,
