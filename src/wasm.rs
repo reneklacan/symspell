@@ -181,6 +181,8 @@ mod tests {
         };
         speller
             .load_dictionary(dict, &JsValue::from_serde(&dict_args).unwrap())
+            .unwrap();
+        speller
             .load_bigram_dictionary(bigram_dict, &JsValue::from_serde(&dict_args).unwrap())
             .unwrap();
         let result: JSSuggestion = speller.lookup_compound(sentence, 1).unwrap()[0]
