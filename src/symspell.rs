@@ -114,6 +114,7 @@ impl<T: StringStrategy> SymSpell<T> {
         }
         true
     }
+
     /// Load multiple bigram entries from a file of bigram/frequency count pairs.
     ///
     /// # Arguments
