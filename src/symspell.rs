@@ -156,7 +156,7 @@ impl<T: StringStrategy> SymSpell<T> {
         if line_parts.len() >= line_parts_len {
             let key = if separator == " " {
                 self.string_strategy.prepare(&format!(
-                    "{}{}",
+                    "{} {}",
                     line_parts[term_index as usize],
                     line_parts[(term_index + 1) as usize]
                 ))
@@ -881,13 +881,12 @@ mod tests {
             2,
             " ",
         );
-
-        let typo = "the bigjest playrs in te strogsommer film slatew ith plety of funn";
-        let correction = "the biggest players in the strong summer film slate with plenty of fun";
+        let typo = "Can yu readthis";
+        let correction = "can you read this";
         let results = sym_spell.lookup_compound(typo, edit_distance_max);
         assert_eq!(1, results.len());
         assert_eq!(correction, results[0].term);
-        assert_eq!(9, results[0].distance);
-        assert_eq!(0, results[0].count);
+        assert_eq!(3, results[0].distance);
+        assert_eq!(1366, results[0].count);
     }
 }
