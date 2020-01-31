@@ -83,3 +83,6 @@ symspell.lookup_compound(sentence, 1);
 ```
 
 It can be compiled using `wasm-pack` (eg. `wasm-pack build --release --target nodejs`)
+
+## Bindings
+  - [Python](https://github.com/VJAYSLN/symspell/tree/master/bindings/Python)
