@@ -1,5 +1,5 @@
 [package]
-name = "symspell_pybind"
+name = "symspell_rs"
 version = "0.3.0"
 authors = ["VJAYSLN"]
 edition = "2018"

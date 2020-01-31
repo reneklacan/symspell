@@ -1,6 +1,6 @@
-import symspell_pybind as sym
+import symspell_rs as sym
 # print(sym.countline())
-# # from symspell_pybind as sym
+# # from symspell_rs as sym
 # import time
 # print(SymspellPy(max_distance=2,prefix_length=7,count_threshold=1))
 sym_spell = sym.SymspellPy(max_distance=2,prefix_length=7,count_threshold=1)

@@ -1,1 +1,1 @@
-mod symspell_pybind;
+mod symspell_rs;
