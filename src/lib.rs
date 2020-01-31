@@ -35,13 +35,20 @@ extern crate serde_derive;
 #[cfg(target_arch = "wasm32")]
 #[cfg(test)]
 extern crate wasm_bindgen_test;
+/*-----------------------------------------------*/
+// #[cfg(target_arch = "pyo3")]
+// extern crate pyo3;
+/*-----------------------------------------------*/
+pub mod edit_distance;
+pub mod string_strategy;
+pub mod suggestion;
+pub mod symspell;
 
-mod edit_distance;
-mod string_strategy;
-mod suggestion;
-mod symspell;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
+/*-----------------------------------------------*/
+// #[cfg(target_arch = "pyo3")]
+/*-----------------------------------------------*/
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use string_strategy::AsciiStringStrategy;
@@ -51,3 +58,7 @@ pub use symspell::{SymSpell, SymSpellBuilder, Verbosity};
 
 #[cfg(target_arch = "wasm32")]
 pub use wasm::JSSymSpell;
+/*-----------------------------------------------*/
+// #[cfg(target_arch = "pyo3")]
+// pub use sym_pyo3::SymspellPy;
+/*-----------------------------------------------*/
