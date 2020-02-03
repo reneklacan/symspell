@@ -1,6 +1,6 @@
 [package]
 name = "symspell"
-version = "0.3.0"
+version = "0.4.0"
 license = "MIT"
 authors = ["Rene Klacan <rene.klacan@gmail.com>"]
 keywords = ["spellcheck"]
@@ -13,7 +13,6 @@ exclude = [
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-
 
 [dependencies]
 strsim = "^0.9"
