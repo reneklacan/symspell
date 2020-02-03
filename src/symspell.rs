@@ -8,6 +8,7 @@ use std::i64;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use composition::Composition;
 use edit_distance::{DistanceAlgorithm, EditDistance};
 use string_strategy::StringStrategy;
 use suggestion::Suggestion;
@@ -649,6 +650,97 @@ impl<T: StringStrategy> SymSpell<T> {
         vec![suggestion]
     }
 
+    /// Divides a string into words by inserting missing spaces at the appropriate positions
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The word being segmented.
+    /// * `max_edit_distance` - The maximum edit distance between input and suggested words.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symspell::{SymSpell, UnicodeStringStrategy, Verbosity};
+    ///
+    /// let mut symspell: SymSpell<UnicodeStringStrategy> = SymSpell::default();
+    /// symspell.load_dictionary("data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+    /// symspell.word_segmentation("itwas", 2);
+    /// ```
+    pub fn word_segmentation(&self, input: &str, max_edit_distance: i64) -> Composition {
+        let input = self.string_strategy.prepare(input);
+        let asize = self.string_strategy.len(&input);
+
+        let mut ci: usize = 0;
+        let mut compositions: Vec<Composition> = vec![Composition::empty(); asize];
+
+        for j in 0..asize {
+            let imax = cmp::min(asize - j, self.max_length as usize);
+            for i in 1..=imax {
+                let top_prob_log: f64;
+
+                let mut part = self.string_strategy.slice(&input, j, j + i);
+
+                let mut sep_len = 0;
+                let mut top_ed: i64 = 0;
+
+                let first_char = self.string_strategy.at(&part, 0).unwrap();
+                if first_char.is_whitespace() {
+                    part = self.string_strategy.remove(&part, 0);
+                } else {
+                    sep_len = 1;
+                }
+
+                top_ed += part.len() as i64;
+
+                part = part.replace(" ", "");
+
+                top_ed -= part.len() as i64;
+
+                let results = self.lookup(&part, Verbosity::Top, max_edit_distance);
+
+                if !results.is_empty() && results[0].distance == 0 {
+                    top_prob_log =
+                        (results[0].count as f64 / self.corpus_word_count as f64).log10();
+                } else {
+                    top_ed += part.len() as i64;
+                    top_prob_log = (10.0
+                        / (self.corpus_word_count as f64 * 10.0f64.powf(part.len() as f64)))
+                    .log10();
+                }
+
+                let di = (i + ci) % asize;
+                // set values in first loop
+                if j == 0 {
+                    compositions[i - 1] = Composition {
+                        segmented_string: part.to_owned(),
+                        distance_sum: top_ed,
+                        prob_log_sum: top_prob_log,
+                    };
+                } else if i as i64 == self.max_length
+                    || (((compositions[ci].distance_sum + top_ed == compositions[di].distance_sum)
+                        || (compositions[ci].distance_sum + sep_len + top_ed
+                            == compositions[di].distance_sum))
+                        && (compositions[di].prob_log_sum
+                            < compositions[ci].prob_log_sum + top_prob_log))
+                    || (compositions[ci].distance_sum + sep_len + top_ed
+                        < compositions[di].distance_sum)
+                {
+                    compositions[di] = Composition {
+                        segmented_string: format!("{} {}", compositions[ci].segmented_string, part),
+                        distance_sum: compositions[ci].distance_sum + sep_len + top_ed,
+                        prob_log_sum: compositions[ci].prob_log_sum + top_prob_log,
+                    };
+                }
+            }
+            if j != 0 {
+                ci += 1;
+            }
+            ci = if ci == asize { 0 } else { ci };
+        }
+        compositions[ci].to_owned()
+    }
+
     fn delete_in_suggestion_prefix(
         &self,
         delete: &str,
@@ -905,5 +997,28 @@ mod tests {
         assert_eq!(correction, results[0].term);
         assert_eq!(3, results[0].distance);
         assert_eq!(1366, results[0].count);
+    }
+
+    #[test]
+    fn test_word_segmentation() {
+        let edit_distance_max = 2;
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        let typo = "thequickbrownfoxjumpsoverthelazydog";
+        let correction = "the quick brown fox jumps over the lazy dog";
+        let result = sym_spell.word_segmentation(typo, edit_distance_max);
+        assert_eq!(correction, result.segmented_string);
+
+        let typo = "itwasabrightcolddayinaprilandtheclockswerestrikingthirteen";
+        let correction = "it was a bright cold day in april and the clocks were striking thirteen";
+        let result = sym_spell.word_segmentation(typo, edit_distance_max);
+        assert_eq!(correction, result.segmented_string);
+
+        let typo =
+            "itwasthebestoftimesitwastheworstoftimesitwastheageofwisdomitwastheageoffoolishness";
+        let correction = "it was the best of times it was the worst of times it was the age of wisdom it was the age of foolishness";
+        let result = sym_spell.word_segmentation(typo, edit_distance_max);
+        assert_eq!(correction, result.segmented_string);
     }
 }

@@ -11,6 +11,13 @@ pub struct JSSuggestion {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct JSComposition {
+    segmented_string: String,
+    distance_sum: i32,
+    prob_log_sum: f32,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct InitParams {
     max_edit_distance: i32,
     prefix_length: i32,
@@ -154,6 +161,23 @@ impl JSSymSpell {
             })
             .collect())
     }
+
+    pub fn word_segmentation(
+        &self,
+        input: &str,
+        max_edit_distance: i32,
+    ) -> Result<JsValue, JsValue> {
+        let seg = self
+            .symspell
+            .word_segmentation(input, max_edit_distance as i64);
+        let res = JSComposition {
+            segmented_string: seg.segmented_string,
+            distance_sum: seg.distance_sum as i32,
+            prob_log_sum: seg.prob_log_sum as f32,
+        };
+
+        Ok(JsValue::from_serde(&res).unwrap())
+    }
 }
 
 #[cfg(test)]
@@ -197,5 +221,14 @@ mod tests {
             .into_serde()
             .unwrap();
         assert_eq!(result.term, expected);
+
+        let sentence = "whereinfo";
+        let expected = "where info";
+        let result: JSComposition = speller
+            .word_segmentation(sentence, 2)
+            .unwrap()
+            .into_serde()
+            .unwrap();
+        assert_eq!(result.segmented_string, expected);
     }
 }
