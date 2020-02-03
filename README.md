@@ -28,6 +28,10 @@ fn main() {
     let sentence = "whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him"
     let compound_suggestions = symspell.lookup_compound(sentence, 2);
     println!("{:?}", compound_suggestions);
+
+    let sentence = "whereisthelove";
+    let segmented = symspell.word_segmentation(sentence, 2);
+    println!("{:?}", segmented);
 }
 ```
 
