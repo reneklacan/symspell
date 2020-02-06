@@ -14,6 +14,7 @@ exclude = [
 [lib]
 name = "symspell"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 strsim = "^0.9"
