@@ -1,0 +1,26 @@
+[package]
+name = "symspell_rs"
+version = "0.3.0"
+authors = ["VJAYSLN"]
+edition = "2018"
+
+
+[profile.release]
+overflow-checks = true
+
+[profile.dev]
+opt-level = 3
+
+[lib]
+name = "symspell"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies.pyo3]
+version = "0.8.4"
+features = ["extension-module"]
+
+[dependencies.symspell]
+version = "*"
+path = "../../"
+

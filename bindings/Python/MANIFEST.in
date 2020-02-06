@@ -1,0 +1,6 @@
+include Cargo.toml
+include pyproject.toml
+include rust-toolchain
+recursive-include src *
+recursive-include symspell-lib *
+recursive-exclude symspell-lib/target *

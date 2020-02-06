@@ -8,11 +8,12 @@ description = "Spelling correction & Fuzzy search"
 homepage = "https://github.com/reneklacan/symspell"
 repository = "https://github.com/reneklacan/symspell"
 exclude = [
-    "data/*",
+    "data/*","examples/*","Cargo.lock",
 ]
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+name = "symspell"
+path = "src/lib.rs"
 
 [dependencies]
 strsim = "^0.9"
