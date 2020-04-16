@@ -611,8 +611,9 @@ impl<T: StringStrategy> SymSpell<T> {
                         suggestion_parts.push(suggestion_split_best.clone());
                     } else {
                         let mut si = Suggestion::empty();
+                        // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                         let si_count: f64 = 10f64
-                            / ((10i64).pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
+                            / ((10i64).saturating_pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
 
                         si.term = term_list1[i].clone();
                         si.count = si_count as i64;
@@ -621,8 +622,9 @@ impl<T: StringStrategy> SymSpell<T> {
                     }
                 } else {
                     let mut si = Suggestion::empty();
+                    // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                     let si_count: f64 = 10f64
-                        / ((10i64).pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
+                        / ((10i64).saturating_pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
 
                     si.term = term_list1[i].clone();
                     si.count = si_count as i64;
@@ -915,6 +917,17 @@ impl<T: StringStrategy> SymSpell<T> {
 mod tests {
     use super::*;
     use string_strategy::UnicodeStringStrategy;
+
+    #[test]
+    fn test_lookup_compound_overflow() {
+        let edit_distance_max = 2;
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        let string_causing_overflow = "aaaaaaaaaaaaaaaaaaa";
+        // This causes a multiplication overflow in 0.4.0
+        let _results = sym_spell.lookup_compound(string_causing_overflow, edit_distance_max);
+    }
 
     #[test]
     fn test_lookup_compound() {
