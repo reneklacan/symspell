@@ -13,6 +13,7 @@ pub trait StringStrategy: Clone + Default {
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AsciiStringStrategy {}
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -63,6 +64,7 @@ impl StringStrategy for AsciiStringStrategy {
 pub type UnicodeiStringStrategy = UnicodeStringStrategy;
 
 #[derive(Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct UnicodeStringStrategy {}
 
 impl Default for UnicodeStringStrategy {

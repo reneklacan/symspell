@@ -2,6 +2,7 @@ use strsim::damerau_levenshtein;
 // use strsim::{damerau_levenshtein, hamming, jaro, jaro_winkler, levenshtein, osa_distance};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DistanceAlgorithm {
     Damerau,
 }

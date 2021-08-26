@@ -21,6 +21,7 @@ pub enum Verbosity {
 }
 
 #[derive(Builder, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SymSpell<T: StringStrategy> {
     /// Maximum edit distance for doing lookups.
     #[builder(default = "2")]
@@ -613,7 +614,9 @@ impl<T: StringStrategy> SymSpell<T> {
                         let mut si = Suggestion::empty();
                         // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                         let si_count: f64 = 10f64
-                            / ((10i64).saturating_pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
+                            / ((10i64)
+                                .saturating_pow(self.string_strategy.len(&term_list1[i]) as u32))
+                                as f64;
 
                         si.term = term_list1[i].clone();
                         si.count = si_count as i64;
@@ -624,7 +627,8 @@ impl<T: StringStrategy> SymSpell<T> {
                     let mut si = Suggestion::empty();
                     // NOTE: this effectively clamps si_count to a certain minimum value, which it can't go below
                     let si_count: f64 = 10f64
-                        / ((10i64).saturating_pow(self.string_strategy.len(&term_list1[i]) as u32)) as f64;
+                        / ((10i64).saturating_pow(self.string_strategy.len(&term_list1[i]) as u32))
+                            as f64;
 
                     si.term = term_list1[i].clone();
                     si.count = si_count as i64;
