@@ -45,11 +45,11 @@ pub struct SymSpell<T: StringStrategy> {
     #[builder(default = "0", setter(skip))]
     max_length: i64,
     #[builder(default = "HashMap::new()", setter(skip))]
-    deletes: HashMap<u64, Vec<String>>,
+    deletes: HashMap<u64, Vec<Box<str>>>,
     #[builder(default = "HashMap::new()", setter(skip))]
-    words: HashMap<String, i64>,
+    words: HashMap<Box<str>, i64>,
     #[builder(default = "HashMap::new()", setter(skip))]
-    bigrams: HashMap<String, i64>,
+    bigrams: HashMap<Box<str>, i64>,
     #[builder(default = "i64::MAX", setter(skip))]
     bigram_min_count: i64,
     #[builder(default = "DistanceAlgorithm::Damerau")]
@@ -184,7 +184,7 @@ impl<T: StringStrategy> SymSpell<T> {
                     .prepare(line_parts[term_index as usize])
             };
             let count = line_parts[count_index as usize].parse::<i64>().unwrap();
-            self.bigrams.insert(key, count);
+            self.bigrams.insert(key.into_boxed_str(), count);
             if count < self.bigram_min_count {
                 self.bigram_min_count = count;
             }
@@ -281,13 +281,13 @@ impl<T: StringStrategy> SymSpell<T> {
                 for suggestion in dict_suggestions {
                     let suggestion_len = self.string_strategy.len(suggestion) as i64;
 
-                    if suggestion == input {
+                    if suggestion.as_ref() == input {
                         continue;
                     }
 
                     if (suggestion_len - input_len).abs() > max_edit_distance2
                         || suggestion_len < candidate_len
-                        || (suggestion_len == candidate_len && suggestion != candidate)
+                        || (suggestion_len == candidate_len && suggestion.as_ref() != candidate)
                     {
                         continue;
                     }
@@ -305,7 +305,7 @@ impl<T: StringStrategy> SymSpell<T> {
                     if candidate_len == 0 {
                         distance = cmp::max(input_len, suggestion_len);
 
-                        if distance > max_edit_distance2 || hashset2.contains(suggestion) {
+                        if distance > max_edit_distance2 || hashset2.contains(suggestion.as_ref()) {
                             continue;
                         }
                         hashset2.insert(suggestion.to_string());
@@ -317,7 +317,7 @@ impl<T: StringStrategy> SymSpell<T> {
                             input_len - 1
                         };
 
-                        if distance > max_edit_distance2 || hashset2.contains(suggestion) {
+                        if distance > max_edit_distance2 || hashset2.contains(suggestion.as_ref()) {
                             continue;
                         }
 
@@ -343,7 +343,7 @@ impl<T: StringStrategy> SymSpell<T> {
                             continue;
                         }
 
-                        if hashset2.contains(suggestion) {
+                        if hashset2.contains(suggestion.as_ref()) {
                             continue;
                         }
                         hashset2.insert(suggestion.to_string());
@@ -357,7 +357,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     if distance <= max_edit_distance2 {
                         let suggestion_count = self.words[suggestion];
-                        let si = Suggestion::new(suggestion, distance, suggestion_count);
+                        let si = Suggestion::new(suggestion.as_ref(), distance, suggestion_count);
 
                         if !suggestions.is_empty() {
                             match verbosity {
@@ -536,7 +536,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                         suggestion_split_best = Suggestion::empty();
                                     }
                                 }
-                                let count2: i64 = match self.bigrams.get(&suggestion_split.term) {
+                                let count2: i64 = match self.bigrams.get(&*suggestion_split.term) {
                                     Some(&bigram_frequency) => {
                                         // increase count, if split
                                         // corrections are part of or
@@ -778,41 +778,46 @@ impl<T: StringStrategy> SymSpell<T> {
         true
     }
 
-    fn create_dictionary_entry(&mut self, key: String, count: i64) -> bool {
+    fn create_dictionary_entry<K>(&mut self, key: K, count: i64) -> bool
+    where
+        K: Clone + AsRef<str> + Into<String>,
+    {
         if count < self.count_threshold {
             return false;
         }
 
-        match self.words.get(&key) {
+        let key_clone = key.clone().into().into_boxed_str();
+
+        match self.words.get(key.as_ref()) {
             Some(i) => {
                 let updated_count = if i64::MAX - i > count {
                     i + count
                 } else {
                     i64::MAX
                 };
-                self.words.insert(key.clone(), updated_count);
+                self.words.insert(key_clone, updated_count);
                 return false;
             }
             None => {
-                self.words.insert(key.clone(), count);
+                self.words.insert(key_clone, count);
             }
         }
 
-        let key_len = self.string_strategy.len(&key);
+        let key_len = self.string_strategy.len(key.as_ref());
 
         if key_len as i64 > self.max_length {
             self.max_length = key_len as i64;
         }
 
-        let edits = self.edits_prefix(&key);
+        let edits = self.edits_prefix(key.as_ref());
 
         for delete in edits {
             let delete_hash = self.get_string_hash(&delete);
 
             self.deletes
                 .entry(delete_hash)
-                .and_modify(|e| e.push(key.clone()))
-                .or_insert_with(|| vec![key.to_string()]);
+                .and_modify(|e| e.push(key.clone().into().into_boxed_str()))
+                .or_insert_with(|| vec![key.clone().into().into_boxed_str()]);
         }
 
         true
