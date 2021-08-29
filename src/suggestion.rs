@@ -15,9 +15,10 @@ impl Suggestion {
             count: 0,
         }
     }
-    pub fn new(term: &str, distance: i64, count: i64) -> Suggestion {
+
+    pub fn new(term: impl Into<String>, distance: i64, count: i64) -> Suggestion {
         Suggestion {
-            term: term.to_string(),
+            term: term.into(),
             distance,
             count,
         }
