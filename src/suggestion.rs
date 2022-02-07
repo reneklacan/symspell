@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Suggestion {
     pub term: String,
     pub distance: i64,
