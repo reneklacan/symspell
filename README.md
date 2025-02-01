@@ -25,7 +25,7 @@ fn main() {
     let suggestions = symspell.lookup("roket", Verbosity::Top, 2);
     println!("{:?}", suggestions);
 
-    let sentence = "whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him"
+    let sentence = "whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him";
     let compound_suggestions = symspell.lookup_compound(sentence, 2);
     println!("{:?}", compound_suggestions);
 
