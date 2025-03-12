@@ -1,17 +1,16 @@
 use std::cmp;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::i64;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use composition::Composition;
-use edit_distance::{DistanceAlgorithm, EditDistance};
-use string_strategy::StringStrategy;
-use suggestion::Suggestion;
+use crate::composition::Composition;
+use crate::edit_distance::{DistanceAlgorithm, EditDistance};
+use crate::string_strategy::StringStrategy;
+use crate::suggestion::Suggestion;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Verbosity {
@@ -150,7 +149,7 @@ impl<T: StringStrategy> SymSpell<T> {
                 eprintln!("progress: {}", i);
             }
             let line_str = line.unwrap();
-            self.load_bigram_dictionary_line(&line_str, term_index, count_index, &separator);
+            self.load_bigram_dictionary_line(&line_str, term_index, count_index, separator);
         }
         true
     }
@@ -275,8 +274,8 @@ impl<T: StringStrategy> SymSpell<T> {
                 break;
             }
 
-            if self.deletes.contains_key(&self.get_string_hash(&candidate)) {
-                let dict_suggestions = &self.deletes[&self.get_string_hash(&candidate)];
+            if self.deletes.contains_key(&self.get_string_hash(candidate)) {
+                let dict_suggestions = &self.deletes[&self.get_string_hash(candidate)];
 
                 for suggestion in dict_suggestions {
                     let suggestion_len = self.string_strategy.len(suggestion) as i64;
@@ -528,7 +527,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                     distance2 = edit_distance_max + 1;
                                 }
 
-                                if suggestion_split_best.term != "" {
+                                if !suggestion_split_best.term.is_empty() {
                                     if distance2 > suggestion_split_best.distance {
                                         continue;
                                     }
@@ -598,7 +597,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                 suggestion_split.count = count2;
 
                                 //early termination of split
-                                if suggestion_split_best.term == ""
+                                if suggestion_split_best.term.is_empty()
                                     || suggestion_split.count > suggestion_split_best.count
                                 {
                                     suggestion_split_best = suggestion_split.clone();
@@ -607,7 +606,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         }
                     }
 
-                    if suggestion_split_best.term != "" {
+                    if !suggestion_split_best.term.is_empty() {
                         //select best suggestion for split pair
                         suggestion_parts.push(suggestion_split_best.clone());
                     } else {
@@ -645,7 +644,7 @@ impl<T: StringStrategy> SymSpell<T> {
         let mut s = "".to_string();
         for si in suggestion_parts {
             s.push_str(&si.term);
-            s.push_str(" ");
+            s.push(' ');
             tmp_count *= si.count as f64 / self.corpus_word_count as f64;
         }
 
@@ -683,8 +682,6 @@ impl<T: StringStrategy> SymSpell<T> {
         for j in 0..asize {
             let imax = cmp::min(asize - j, self.max_length as usize);
             for i in 1..=imax {
-                let top_prob_log: f64;
-
                 let mut part = self.string_strategy.slice(&input, j, j + i);
 
                 let mut sep_len = 0;
@@ -705,15 +702,13 @@ impl<T: StringStrategy> SymSpell<T> {
 
                 let results = self.lookup(&part, Verbosity::Top, max_edit_distance);
 
-                if !results.is_empty() && results[0].distance == 0 {
-                    top_prob_log =
-                        (results[0].count as f64 / self.corpus_word_count as f64).log10();
+                let top_prob_log = if !results.is_empty() && results[0].distance == 0 {
+                    (results[0].count as f64 / self.corpus_word_count as f64).log10()
                 } else {
                     top_ed += part.len() as i64;
-                    top_prob_log = (10.0
-                        / (self.corpus_word_count as f64 * 10.0f64.powf(part.len() as f64)))
-                    .log10();
-                }
+                    (10.0 / (self.corpus_word_count as f64 * 10.0f64.powf(part.len() as f64)))
+                        .log10()
+                };
 
                 let di = (i + ci) % asize;
                 // set values in first loop
@@ -925,7 +920,7 @@ impl<T: StringStrategy> SymSpell<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use string_strategy::UnicodeStringStrategy;
+    use crate::string_strategy::UnicodeStringStrategy;
 
     #[test]
     fn test_lookup_compound_overflow() {
