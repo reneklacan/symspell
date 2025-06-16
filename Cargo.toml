@@ -7,16 +7,15 @@ keywords = ["spellcheck"]
 description = "Spelling correction & Fuzzy search"
 homepage = "https://github.com/reneklacan/symspell"
 repository = "https://github.com/reneklacan/symspell"
-exclude = [
-    "data/*",
-]
+exclude = ["data/*"]
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-strsim = "^0.10"
-derive_builder = "^0.10"
+strsim = "^0.11"
+derive_builder = "^0.20"
 serde = { version = "1.0", features = ["derive"], optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -25,7 +24,7 @@ unidecode = "^0.3"
 [target.wasm32-unknown-unknown.dependencies]
 serde = "^1.0.59"
 serde_derive = "^1.0.59"
-wasm-bindgen = { version = "^0.2", features = ["serde-serialize"]}
+wasm-bindgen = { version = "^0.2", features = ["serde-serialize"] }
 
 [target.wasm32-unknown-unknown.dev-dependencies]
 wasm-bindgen-test = "^0.3"
