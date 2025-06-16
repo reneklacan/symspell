@@ -1,13 +1,13 @@
 [package]
 name = "symspell"
-version = "0.4.3"
+version = "0.4.4"
 license = "MIT"
 authors = ["Rene Klacan <rene.klacan@gmail.com>"]
 keywords = ["spellcheck"]
 description = "Spelling correction & Fuzzy search"
 homepage = "https://github.com/reneklacan/symspell"
 repository = "https://github.com/reneklacan/symspell"
-exclude = ["data/*"]
+exclude = ["data/*", ".*"]
 edition = "2024"
 
 [lib]
