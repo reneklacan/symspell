@@ -7,8 +7,6 @@ Rust implementation of brilliant [SymSpell](https://github.com/wolfgarbe/SymSpel
 ## Usage
 
 ```rust
-extern crate symspell;
-
 use symspell::{AsciiStringStrategy, SymSpell, Verbosity};
 
 fn main() {
