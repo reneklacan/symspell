@@ -1,8 +1,19 @@
 [![Documentation](https://docs.rs/symspell/badge.svg)](https://docs.rs/symspell)
+[![Crates.io](https://img.shields.io/crates/v/symspell.svg)](https://crates.io/crates/symspell)
 
 # SymSpell
 
-Rust implementation of brilliant [SymSpell](https://github.com/wolfgarbe/SymSpell) originally written in C# by [@wolfgarbe](https://github.com/wolfgarbe).
+A fast spelling correction and fuzzy search library for Rust. Given a misspelled word like `"roket"`, it finds the correct spelling `"rocket"`. It can also fix entire sentences, split concatenated words, and rank suggestions by how common each word is.
+
+Rust implementation of the [SymSpell](https://github.com/wolfgarbe/SymSpell) algorithm originally written in C# by [@wolfgarbe](https://github.com/wolfgarbe). It works by pre-computing all possible deletions of dictionary words and storing them in a hash map, which allows O(1) average lookup time at query time — orders of magnitude faster than traditional approaches like BK-trees or Norvig's algorithm.
+
+## Features
+
+- **Single-word correction** (`lookup`) — find the closest matching dictionary word within a given edit distance
+- **Multi-word correction** (`lookup_compound`) — correct entire sentences, handling word splits, joins, and replacements. Supports bigram frequency dictionaries for context-aware ranking
+- **Word segmentation** (`word_segmentation`) — split concatenated words into their components (e.g. `"thequickbrownfox"` → `"the quick brown fox"`)
+- **WebAssembly support** — compile to WASM for use in JavaScript/browser environments
+- **Configurable string handling** — pluggable string strategies for ASCII transliteration or full Unicode support
 
 ## Usage
 
@@ -54,7 +65,7 @@ String strategy is abstraction for string manipulation, for example preprocessin
 
 There are two strategies included:
 * `UnicodeStringStrategy`
-    * Doesn't do any prepocessing and handles strings as they are.
+    * Doesn't do any preprocessing and handles strings as they are.
 * `AsciiStringStrategy`
     * Transliterates strings into ASCII only characters.
     * Useful when you are working with accented languages and you don't want to care about accents, etc
