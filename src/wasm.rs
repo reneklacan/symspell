@@ -1,6 +1,6 @@
 use std::str;
-use string_strategy::UnicodeStringStrategy;
-use symspell::{SymSpell, SymSpellBuilder, Verbosity};
+use crate::string_strategy::UnicodeStringStrategy;
+use crate::symspell::{SymSpell, SymSpellBuilder, Verbosity};
 use wasm_bindgen::prelude::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -40,39 +40,26 @@ pub struct JSSymSpell {
 impl JSSymSpell {
     #[wasm_bindgen(constructor)]
     pub fn new(parameters: &JsValue) -> Result<JSSymSpell, JsValue> {
-        let params: InitParams;
+        let params: InitParams = serde_wasm_bindgen::from_value(parameters.clone())
+            .map_err(|_| JsValue::from("Unable to parse arguments"))?;
 
-        if let Ok(i) = parameters.into_serde() {
-            params = i;
-        } else {
-            return Err(JsValue::from("Unable to parse arguments"));
-        }
+        let symspell = SymSpellBuilder::default()
+            .max_dictionary_edit_distance(params.max_edit_distance as i64)
+            .prefix_length(params.prefix_length as i64)
+            .count_threshold(params.count_threshold as i64)
+            .build()
+            .map_err(|e| JsValue::from(e.to_string()))?;
 
-        Ok(JSSymSpell {
-            symspell: SymSpellBuilder::default()
-                .max_dictionary_edit_distance(params.max_edit_distance as i64)
-                .prefix_length(params.prefix_length as i64)
-                .count_threshold(params.count_threshold as i64)
-                .build()?,
-        })
+        Ok(JSSymSpell { symspell })
     }
 
     // Expose numeric params as i32 and cast to i64 is required bc BigInt doesn'tplay well in some
     // browsers.
     pub fn load_dictionary(&mut self, input: &[u8], args: &JsValue) -> Result<(), JsValue> {
-        let params: DictParams;
-        if let Ok(i) = args.into_serde() {
-            params = i;
-        } else {
-            return Err(JsValue::from("Unable to parse arguments"));
-        }
+        let params: DictParams = serde_wasm_bindgen::from_value(args.clone())
+            .map_err(|_| JsValue::from("Unable to parse arguments"))?;
 
-        let corpus: &str;
-        if let Ok(i) = str::from_utf8(input) {
-            corpus = i;
-        } else {
-            return Err(JsValue::from("Invalid UTF-8"));
-        }
+        let corpus = str::from_utf8(input).map_err(|_| JsValue::from("Invalid UTF-8"))?;
 
         for line in corpus.lines() {
             self.symspell.load_dictionary_line(
@@ -88,19 +75,10 @@ impl JSSymSpell {
     // Expose numeric params as i32 and cast to i64 is required bc BigInt doesn'tplay well in some
     // browsers.
     pub fn load_bigram_dictionary(&mut self, input: &[u8], args: &JsValue) -> Result<(), JsValue> {
-        let params: DictParams;
-        if let Ok(i) = args.into_serde() {
-            params = i;
-        } else {
-            return Err(JsValue::from("Unable to parse arguments"));
-        }
+        let params: DictParams = serde_wasm_bindgen::from_value(args.clone())
+            .map_err(|_| JsValue::from("Unable to parse arguments"))?;
 
-        let corpus: &str;
-        if let Ok(i) = str::from_utf8(input) {
-            corpus = i;
-        } else {
-            return Err(JsValue::from("Invalid UTF-8"));
-        }
+        let corpus = str::from_utf8(input).map_err(|_| JsValue::from("Invalid UTF-8"))?;
 
         for line in corpus.lines() {
             self.symspell.load_bigram_dictionary_line(
@@ -127,7 +105,7 @@ impl JSSymSpell {
                     distance: sugg.distance as i32,
                     count: sugg.count as i32,
                 };
-                JsValue::from_serde(&temp).unwrap()
+                serde_wasm_bindgen::to_value(&temp).unwrap()
             })
             .collect())
     }
@@ -157,7 +135,7 @@ impl JSSymSpell {
                     distance: sugg.distance as i32,
                     count: sugg.count as i32,
                 };
-                JsValue::from_serde(&temp).unwrap()
+                serde_wasm_bindgen::to_value(&temp).unwrap()
             })
             .collect())
     }
@@ -176,7 +154,7 @@ impl JSSymSpell {
             prob_log_sum: seg.prob_log_sum as f32,
         };
 
-        Ok(JsValue::from_serde(&res).unwrap())
+        Ok(serde_wasm_bindgen::to_value(&res).unwrap())
     }
 }
 
@@ -192,7 +170,8 @@ mod tests {
             prefix_length: 7,
             count_threshold: 1,
         };
-        let mut speller = JSSymSpell::new(&JsValue::from_serde(&init_args).unwrap()).unwrap();
+        let mut speller =
+            JSSymSpell::new(&serde_wasm_bindgen::to_value(&init_args).unwrap()).unwrap();
         let dict = "where 360468339\ninfo 352363058".as_bytes();
         let dict_args = DictParams {
             term_index: 0,
@@ -200,7 +179,7 @@ mod tests {
             separator: String::from(" "),
         };
         speller
-            .load_dictionary(dict, &JsValue::from_serde(&dict_args).unwrap())
+            .load_dictionary(dict, &serde_wasm_bindgen::to_value(&dict_args).unwrap())
             .unwrap();
 
         let bigram_dict = "this is 1111\nwhere is 1234".as_bytes();
@@ -212,23 +191,22 @@ mod tests {
         speller
             .load_bigram_dictionary(
                 bigram_dict,
-                &JsValue::from_serde(&bigram_dict_args).unwrap(),
+                &serde_wasm_bindgen::to_value(&bigram_dict_args).unwrap(),
             )
             .unwrap();
         let sentence = "wher";
         let expected = "where";
-        let result: JSSuggestion = speller.lookup_compound(sentence, 1).unwrap()[0]
-            .into_serde()
-            .unwrap();
+        let result: JSSuggestion =
+            serde_wasm_bindgen::from_value(speller.lookup_compound(sentence, 1).unwrap()[0].clone())
+                .unwrap();
         assert_eq!(result.term, expected);
 
         let sentence = "whereinfo";
         let expected = "where info";
-        let result: JSComposition = speller
-            .word_segmentation(sentence, 2)
-            .unwrap()
-            .into_serde()
-            .unwrap();
+        let result: JSComposition = serde_wasm_bindgen::from_value(
+            speller.word_segmentation(sentence, 2).unwrap(),
+        )
+        .unwrap();
         assert_eq!(result.segmented_string, expected);
     }
 }
