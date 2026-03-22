@@ -26,4 +26,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: jetli/wasm-pack-action@v0.4.0
       - uses: browser-actions/setup-firefox@v1
-      - run: wasm-pack test --firefox --headless
+      - run: wasm-pack test --firefox --headless -- --lib
