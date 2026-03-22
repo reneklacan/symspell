@@ -3,16 +3,14 @@ name = "symspell"
 version = "0.4.5"
 license = "MIT"
 authors = ["Rene Klacan <rene.klacan@gmail.com>"]
-keywords = ["spellcheck"]
+keywords = ["spellcheck", "fuzzy-search", "spelling", "symspell", "autocorrect"]
+categories = ["text-processing", "algorithms"]
 description = "Spelling correction & Fuzzy search"
 homepage = "https://github.com/reneklacan/symspell"
 repository = "https://github.com/reneklacan/symspell"
 exclude = ["data/*", ".*"]
 rust-version = '1.85'
 edition = "2024"
-
-[lib]
-crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 strsim = "^0.11"
@@ -23,8 +21,7 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 unidecode = "^0.3"
 
 [target.wasm32-unknown-unknown.dependencies]
-serde = "^1.0"
-serde_derive = "^1.0"
+serde = { version = "^1.0", features = ["derive"] }
 wasm-bindgen = { version = "^0.2", features = ["serde-serialize"] }
 
 [target.wasm32-unknown-unknown.dev-dependencies]

@@ -3,28 +3,28 @@ use string_strategy::UnicodeStringStrategy;
 use symspell::{SymSpell, SymSpellBuilder, Verbosity};
 use wasm_bindgen::prelude::*;
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct JSSuggestion {
     term: String,
     distance: i32,
     count: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct JSComposition {
     segmented_string: String,
     distance_sum: i32,
     prob_log_sum: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct InitParams {
     max_edit_distance: i32,
     prefix_length: i32,
     count_threshold: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct DictParams {
     term_index: i32,
     count_index: i32,

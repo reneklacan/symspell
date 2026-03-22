@@ -19,7 +19,7 @@ pub enum Verbosity {
     All,
 }
 
-#[derive(Builder, PartialEq)]
+#[derive(derive_builder::Builder, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SymSpell<T: StringStrategy> {
     /// Maximum edit distance for doing lookups.
