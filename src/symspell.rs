@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use crate::composition::Composition;
-use crate::edit_distance::{DistanceAlgorithm, EditDistance};
+use crate::edit_distance;
 use crate::string_strategy::StringStrategy;
 use crate::suggestion::Suggestion;
 
@@ -51,8 +51,6 @@ pub struct SymSpell<T: StringStrategy> {
     bigrams: HashMap<Box<str>, i64>,
     #[builder(default = "i64::MAX", setter(skip))]
     bigram_min_count: i64,
-    #[builder(default = "DistanceAlgorithm::Damerau")]
-    distance_algorithm: DistanceAlgorithm,
     #[builder(default = "T::new()", setter(skip))]
     string_strategy: T,
 }
@@ -86,10 +84,7 @@ impl<T: StringStrategy> SymSpell<T> {
         let file = File::open(corpus).expect("file not found");
         let sr = BufReader::new(file);
 
-        for (i, line) in sr.lines().enumerate() {
-            if i % 50_000 == 0 {
-                eprintln!("progress: {}", i);
-            }
+        for line in sr.lines() {
             let line_str = line.unwrap();
             self.load_dictionary_line(&line_str, term_index, count_index, separator);
         }
@@ -113,11 +108,13 @@ impl<T: StringStrategy> SymSpell<T> {
     ) -> bool {
         let line_parts: Vec<&str> = line.split(separator).collect();
         if line_parts.len() >= 2 {
-            // let key = unidecode(line_parts[term_index as usize]);
             let key = self
                 .string_strategy
                 .prepare(line_parts[term_index as usize]);
-            let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+            let count = match line_parts[count_index as usize].parse::<i64>() {
+                Ok(c) => c,
+                Err(_) => return false,
+            };
 
             self.create_dictionary_entry(key, count);
         }
@@ -144,10 +141,7 @@ impl<T: StringStrategy> SymSpell<T> {
         }
         let file = File::open(corpus).expect("file not found");
         let sr = BufReader::new(file);
-        for (i, line) in sr.lines().enumerate() {
-            if i % 50_000 == 0 {
-                eprintln!("progress: {}", i);
-            }
+        for line in sr.lines() {
             let line_str = line.unwrap();
             self.load_bigram_dictionary_line(&line_str, term_index, count_index, separator);
         }
@@ -182,7 +176,10 @@ impl<T: StringStrategy> SymSpell<T> {
                 self.string_strategy
                     .prepare(line_parts[term_index as usize])
             };
-            let count = line_parts[count_index as usize].parse::<i64>().unwrap();
+            let count = match line_parts[count_index as usize].parse::<i64>() {
+                Ok(c) => c,
+                Err(_) => return false,
+            };
             self.bigrams.insert(key.into_boxed_str(), count);
             if count < self.bigram_min_count {
                 self.bigram_min_count = count;
@@ -259,12 +256,10 @@ impl<T: StringStrategy> SymSpell<T> {
             candidates.push(input.to_string());
         }
 
-        let distance_comparer = EditDistance::new(self.distance_algorithm.clone());
-
         while candidate_pointer < candidates.len() {
-            let candidate = &candidates.get(candidate_pointer).unwrap().clone();
+            let candidate = candidates[candidate_pointer].clone();
             candidate_pointer += 1;
-            let candidate_len = self.string_strategy.len(candidate) as i64;
+            let candidate_len = self.string_strategy.len(&candidate) as i64;
             let length_diff = input_prefix_len - candidate_len;
 
             if length_diff > max_edit_distance2 {
@@ -274,8 +269,7 @@ impl<T: StringStrategy> SymSpell<T> {
                 break;
             }
 
-            if self.deletes.contains_key(&self.get_string_hash(candidate)) {
-                let dict_suggestions = &self.deletes[&self.get_string_hash(candidate)];
+            if let Some(dict_suggestions) = self.deletes.get(&self.get_string_hash(&candidate)) {
 
                 for suggestion in dict_suggestions {
                     let suggestion_len = self.string_strategy.len(suggestion) as i64;
@@ -286,7 +280,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     if (suggestion_len - input_len).abs() > max_edit_distance2
                         || suggestion_len < candidate_len
-                        || (suggestion_len == candidate_len && suggestion.as_ref() != candidate)
+                        || (suggestion_len == candidate_len && suggestion.as_ref() != candidate.as_str())
                     {
                         continue;
                     }
@@ -333,7 +327,7 @@ impl<T: StringStrategy> SymSpell<T> {
                     } else {
                         if verbosity != Verbosity::All
                             && !self.delete_in_suggestion_prefix(
-                                candidate,
+                                &candidate,
                                 candidate_len,
                                 suggestion,
                                 suggestion_len,
@@ -347,7 +341,7 @@ impl<T: StringStrategy> SymSpell<T> {
                         }
                         hashset2.insert(suggestion.to_string());
 
-                        distance = distance_comparer.compare(input, suggestion, max_edit_distance2);
+                        distance = edit_distance::distance(input, suggestion, max_edit_distance2);
 
                         if distance < 0 {
                             continue;
@@ -393,7 +387,7 @@ impl<T: StringStrategy> SymSpell<T> {
                 }
 
                 for i in 0..candidate_len {
-                    let delete = self.string_strategy.remove(candidate, i as usize);
+                    let delete = self.string_strategy.remove(&candidate, i as usize);
 
                     if !hashset1.contains(&delete) {
                         hashset1.insert(delete.clone());
@@ -434,7 +428,6 @@ impl<T: StringStrategy> SymSpell<T> {
         // let mut suggestions_previous_term: Vec<Suggestion> = Vec::new();                  //suggestions for a single term
         let mut suggestions: Vec<Suggestion>;
         let mut suggestion_parts: Vec<Suggestion> = Vec::new();
-        let distance_comparer = EditDistance::new(self.distance_algorithm.clone());
 
         //translate every term to its best suggestion, otherwise it remains unchanged
         let mut last_combi = false;
@@ -517,7 +510,7 @@ impl<T: StringStrategy> SymSpell<T> {
                                 suggestion_split.term =
                                     format!("{} {}", suggestions1[0].term, suggestions2[0].term);
 
-                                let mut distance2 = distance_comparer.compare(
+                                let mut distance2 = edit_distance::distance(
                                     &term_list1[i],
                                     &format!("{} {}", suggestions1[0].term, suggestions2[0].term),
                                     edit_distance_max,
@@ -650,7 +643,7 @@ impl<T: StringStrategy> SymSpell<T> {
 
         suggestion.term = s.trim().to_string();
         suggestion.count = tmp_count as i64;
-        suggestion.distance = distance_comparer.compare(input, &suggestion.term, 2i64.pow(31) - 1);
+        suggestion.distance = edit_distance::distance(input, &suggestion.term, 2i64.pow(31) - 1);
 
         vec![suggestion]
     }
@@ -1014,6 +1007,98 @@ mod tests {
         assert_eq!(correction, results[0].term);
         assert_eq!(3, results[0].distance);
         assert_eq!(1366, results[0].count);
+    }
+
+    #[test]
+    fn test_lookup_top() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        let results = sym_spell.lookup("roket", Verbosity::Top, 2);
+        assert_eq!(1, results.len());
+        assert_eq!("rocket", results[0].term);
+
+        // exact match
+        let results = sym_spell.lookup("rocket", Verbosity::Top, 2);
+        assert_eq!(1, results.len());
+        assert_eq!("rocket", results[0].term);
+        assert_eq!(0, results[0].distance);
+    }
+
+    #[test]
+    fn test_lookup_all() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        let results = sym_spell.lookup("roket", Verbosity::All, 2);
+        assert!(results.len() > 1);
+        assert!(results.iter().any(|s| s.term == "rocket"));
+        // all results should be within edit distance 2
+        assert!(results.iter().all(|s| s.distance <= 2));
+    }
+
+    #[test]
+    fn test_lookup_closest() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        let results = sym_spell.lookup("roket", Verbosity::Closest, 2);
+        assert!(!results.is_empty());
+        let min_distance = results[0].distance;
+        // all results should have the same (minimum) distance
+        assert!(results.iter().all(|s| s.distance == min_distance));
+    }
+
+    #[test]
+    fn test_lookup_no_match() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        let results = sym_spell.lookup("xzxzxzxz", Verbosity::Top, 2);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_lookup_empty_input() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        sym_spell.load_dictionary("./data/frequency_dictionary_en_82_765.txt", 0, 1, " ");
+
+        // empty input with edit distance 2 matches short words (e.g. "a", "i")
+        let results = sym_spell.lookup("", Verbosity::Top, 2);
+        assert!(!results.is_empty());
+        assert!(results[0].distance <= 2);
+
+        // empty input with edit distance 0 matches nothing
+        let results = sym_spell.lookup("", Verbosity::Top, 0);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_load_dictionary_missing_file() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        let result = sym_spell.load_dictionary("nonexistent_file.txt", 0, 1, " ");
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_load_dictionary_line_bad_count() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        let result = sym_spell.load_dictionary_line("word notanumber", 0, 1, " ");
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_load_bigram_dictionary_missing_file() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        let result = sym_spell.load_bigram_dictionary("nonexistent_file.txt", 0, 2, " ");
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_load_bigram_dictionary_line_bad_count() {
+        let mut sym_spell = SymSpell::<UnicodeStringStrategy>::default();
+        let result = sym_spell.load_bigram_dictionary_line("hello world notanumber", 0, 2, " ");
+        assert!(!result);
     }
 
     #[test]

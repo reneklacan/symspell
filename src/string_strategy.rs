@@ -18,7 +18,6 @@ pub trait StringStrategy: Clone + Default {
 pub struct AsciiStringStrategy {}
 
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(target_arch = "wasm32"))]
 impl StringStrategy for AsciiStringStrategy {
     fn new() -> Self {
         Self {}
@@ -39,7 +38,7 @@ impl StringStrategy for AsciiStringStrategy {
     }
 
     fn slice(&self, s: &str, start: usize, end: usize) -> String {
-        unsafe { s.get_unchecked(start..end) }.to_string()
+        s[start..end].to_string()
     }
 
     fn suffix(&self, s: &str, start: usize) -> String {
@@ -93,7 +92,7 @@ impl StringStrategy for UnicodeStringStrategy {
     }
 
     fn at(&self, s: &str, i: isize) -> Option<char> {
-        if i < 0 || i >= s.len() as isize {
+        if i < 0 {
             return None;
         }
 
@@ -144,5 +143,37 @@ mod tests {
     #[test]
     fn unicodei_strategy() {
         assert_eq!(UnicodeiStringStrategy::new().prepare("ciccio"), "ciccio");
+    }
+
+    #[test]
+    fn unicode_len_multibyte() {
+        assert_eq!(UnicodeStringStrategy::new().len("héllo"), 5);
+        assert_eq!(UnicodeStringStrategy::new().len("日本語"), 3);
+    }
+
+    #[test]
+    fn unicode_slice_multibyte() {
+        assert_eq!(UnicodeStringStrategy::new().slice("héllo", 0, 3), "hél");
+        assert_eq!(UnicodeStringStrategy::new().slice("日本語", 1, 3), "本語");
+    }
+
+    #[test]
+    fn unicode_remove_multibyte() {
+        assert_eq!(UnicodeStringStrategy::new().remove("héllo", 1), "hllo");
+        assert_eq!(UnicodeStringStrategy::new().remove("日本語", 0), "本語");
+    }
+
+    #[test]
+    fn unicode_at_multibyte() {
+        assert_eq!(UnicodeStringStrategy::new().at("héllo", 1), Some('é'));
+        assert_eq!(UnicodeStringStrategy::new().at("日本語", 2), Some('語'));
+        assert_eq!(UnicodeStringStrategy::new().at("日本語", 3), None);
+        assert_eq!(UnicodeStringStrategy::new().at("日本語", -1), None);
+    }
+
+    #[test]
+    fn unicode_suffix_multibyte() {
+        assert_eq!(UnicodeStringStrategy::new().suffix("héllo", 2), "llo");
+        assert_eq!(UnicodeStringStrategy::new().suffix("日本語", 1), "本語");
     }
 }
