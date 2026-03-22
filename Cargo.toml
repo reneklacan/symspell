@@ -1,6 +1,6 @@
 [package]
 name = "symspell"
-version = "0.5.1"
+version = "0.5.2"
 license = "MIT"
 authors = ["Rene Klacan <rene.klacan@gmail.com>"]
 keywords = ["spellcheck", "fuzzy-search", "spelling", "symspell", "autocorrect"]
