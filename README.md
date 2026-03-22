@@ -1,5 +1,6 @@
-[![Documentation](https://docs.rs/symspell/badge.svg)](https://docs.rs/symspell)
+[![Build](https://github.com/reneklacan/symspell/actions/workflows/ci.yml/badge.svg)](https://github.com/reneklacan/symspell/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/symspell.svg)](https://crates.io/crates/symspell)
+[![Documentation](https://docs.rs/symspell/badge.svg)](https://docs.rs/symspell)
 
 # SymSpell
 
