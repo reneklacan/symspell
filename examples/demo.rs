@@ -31,7 +31,7 @@ fn main() {
 
 pub fn measure<F>(name: &str, mut f: F)
 where
-    F: FnMut() -> (),
+    F: FnMut(),
 {
     let now = Instant::now();
     f();
