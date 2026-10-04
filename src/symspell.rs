@@ -270,7 +270,6 @@ impl<T: StringStrategy> SymSpell<T> {
             }
 
             if let Some(dict_suggestions) = self.deletes.get(&self.get_string_hash(&candidate)) {
-
                 for suggestion in dict_suggestions {
                     let suggestion_len = self.string_strategy.len(suggestion) as i64;
 
@@ -280,7 +279,8 @@ impl<T: StringStrategy> SymSpell<T> {
 
                     if (suggestion_len - input_len).abs() > max_edit_distance2
                         || suggestion_len < candidate_len
-                        || (suggestion_len == candidate_len && suggestion.as_ref() != candidate.as_str())
+                        || (suggestion_len == candidate_len
+                            && suggestion.as_ref() != candidate.as_str())
                     {
                         continue;
                     }
