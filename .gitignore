@@ -1,3 +1,4 @@
 target/
+pkg/
 
 examples/*_ignored.rs

@@ -18,6 +18,8 @@ Rust implementation of the [SymSpell](https://github.com/wolfgarbe/SymSpell) alg
 
 ## Usage
 
+Requires Rust 1.85 or later (Rust 2024 edition). CI tests both Rust 1.85 and the latest stable Rust.
+
 ```rust
 use symspell::{AsciiStringStrategy, SymSpell, Verbosity};
 
@@ -52,12 +54,14 @@ N.B. the dictionary entries have to be lowercase
 ### Using Custom Settings
 
 ```rust
+use symspell::{AsciiStringStrategy, SymSpell, SymSpellBuilder};
+
 let mut symspell: SymSpell<AsciiStringStrategy> = SymSpellBuilder::default()
     .max_dictionary_edit_distance(2)
     .prefix_length(7)
     .count_threshold(1)
     .build()
-    .unwrap()
+    .unwrap();
 ```
 
 ### String Strategy
@@ -88,12 +92,36 @@ const fs = require('fs');
 const rust = require('./pkg');
 
 let dictionary = fs.readFileSync('data/frequency_dictionary_en_82_765.txt');
+let bigram_dict = fs.readFileSync('data/frequency_bigramdictionary_en_243_342.txt');
 let sentence = "whereis th elove hehad dated forImuch of thepast who couqdn'tread in sixtgrade and ins pired him";
 
 let symspell = new rust.SymSpell({ max_edit_distance: 2,  prefix_length: 7,  count_threshold: 1});
-symspell.load_dictionary(dictionary.buffer, { term_index: 0,  count_index: 1, separator: " "});
-symspell.load_bigram_dictionary(bigram_dict.buffer, { term_index: 0,  count_index: 2, separator: " "});
+symspell.load_dictionary(dictionary, { term_index: 0,  count_index: 1, separator: " "});
+symspell.load_bigram_dictionary(bigram_dict, { term_index: 0,  count_index: 2, separator: " "});
 symspell.lookup_compound(sentence, 1);
 ```
 
 It can be compiled using `wasm-pack` (eg. `wasm-pack build --release --target nodejs`)
+
+## Development
+
+The repository's `rust-toolchain.toml` selects stable Rust with rustfmt, Clippy, and the WebAssembly target. Update it locally with `rustup update stable`.
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --locked --all-features --all-targets -- -D warnings
+cargo test --locked
+cargo test --locked --all-features
+cargo doc --locked --all-features --no-deps
+```
+
+The native tests use the dictionary files included in `data/`. The optional `serde` feature enables serialization of the Rust dictionary and suggestions.
+
+For WebAssembly, install `wasm-pack` and Firefox, then run:
+
+```sh
+cargo install wasm-pack --locked
+cargo clippy --locked --target wasm32-unknown-unknown --all-features --all-targets -- -D warnings
+wasm-pack test --firefox --headless -- --locked --all-features --lib
+wasm-pack build --release --target nodejs -- --locked
+```
