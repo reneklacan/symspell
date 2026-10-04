@@ -1,6 +1,6 @@
-use std::str;
 use crate::string_strategy::UnicodeStringStrategy;
 use crate::symspell::{SymSpell, SymSpellBuilder, Verbosity};
+use std::str;
 use wasm_bindgen::prelude::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -63,7 +63,7 @@ impl JSSymSpell {
 
         for line in corpus.lines() {
             self.symspell.load_dictionary_line(
-                &line,
+                line,
                 params.term_index as i64,
                 params.count_index as i64,
                 &params.separator,
@@ -82,7 +82,7 @@ impl JSSymSpell {
 
         for line in corpus.lines() {
             self.symspell.load_bigram_dictionary_line(
-                &line,
+                line,
                 params.term_index as i64,
                 params.count_index as i64,
                 &params.separator,
@@ -125,7 +125,7 @@ impl JSSymSpell {
 
         let res = self
             .symspell
-            .lookup(&input, sym_verbosity, max_edit_distance as i64);
+            .lookup(input, sym_verbosity, max_edit_distance as i64);
 
         Ok(res
             .into_iter()
@@ -198,17 +198,17 @@ mod tests {
             .unwrap();
         let sentence = "wher";
         let expected = "where";
-        let result: JSSuggestion =
-            serde_wasm_bindgen::from_value(speller.lookup_compound(sentence, 1).unwrap()[0].clone())
-                .unwrap();
+        let result: JSSuggestion = serde_wasm_bindgen::from_value(
+            speller.lookup_compound(sentence, 1).unwrap()[0].clone(),
+        )
+        .unwrap();
         assert_eq!(result.term, expected);
 
         let sentence = "whereinfo";
         let expected = "where info";
-        let result: JSComposition = serde_wasm_bindgen::from_value(
-            speller.word_segmentation(sentence, 2).unwrap(),
-        )
-        .unwrap();
+        let result: JSComposition =
+            serde_wasm_bindgen::from_value(speller.word_segmentation(sentence, 2).unwrap())
+                .unwrap();
         assert_eq!(result.segmented_string, expected);
     }
 }
